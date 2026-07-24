@@ -1,0 +1,506 @@
+[
+  {
+    "name": "Aiger Akabane",
+    "anime": "Beyblade Burst",
+    "dica1": "🔍 Ele é um blader lendário!",
+    "dica2": "🔍 Seu Beyblade se chama Z Achilles.",
+    "dica3": "🔍 Ele tem cabelo azul e usa um capacete."
+  },
+  {
+    "name": "Amy",
+    "anime": "Sonic",
+    "dica1": "🔍 Ela é uma ouriço rosa!",
+    "dica2": "🔍 Está sempre perseguindo o Sonic.",
+    "dica3": "🔍 Usa um Piko Piko Hammer."
+  },
+  {
+    "name": "Anya",
+    "anime": "Spy x Family",
+    "dica1": "🔍 Ela é uma garotinha telecinética!",
+    "dica2": "🔍 Adora amendoim.",
+    "dica3": "🔍 Chama o pai de 'Papai'."
+  },
+  {
+    "name": "Aqua",
+    "anime": "Konosuba",
+    "dica1": "🔍 Ela é uma deusa da água!",
+    "dica2": "🔍 É inútil em várias situações.",
+    "dica3": "🔍 Usa um vestido azul e tem cabelo azul."
+  },
+  {
+    "name": "Beast Boy",
+    "anime": "Teen Titans",
+    "dica1": "🔍 Ele pode se transformar em animais!",
+    "dica2": "🔍 É verde e adora piadas.",
+    "dica3": "🔍 Sua namorada é a Ravena."
+  },
+  {
+    "name": "Cyborg",
+    "anime": "Teen Titans",
+    "dica1": "🔍 Ele é meio humano, meio máquina!",
+    "dica2": "🔍 Tem um canhão no braço.",
+    "dica3": "🔍 Adora tecnologia e música."
+  },
+  {
+    "name": "Darwin",
+    "anime": "Gumball",
+    "dica1": "🔍 Ele é um peixe que anda e fala!",
+    "dica2": "🔍 Melhor amigo do Gumball.",
+    "dica3": "🔍 É laranja e usa tênis vermelhos."
+  },
+  {
+    "name": "Denji",
+    "anime": "Chainsaw Man",
+    "dica1": "🔍 Ele é um demônio com uma motosserra!",
+    "dica2": "🔍 Tem um cão demônio chamado Pochita.",
+    "dica3": "🔍 Seu sonho é tocar em seios."
+  },
+  {
+    "name": "Finn",
+    "anime": "Adventure Time",
+    "dica1": "🔍 Ele é um herói humano!",
+    "dica2": "🔍 Usa uma mochila e uma espada.",
+    "dica3": "🔍 Tem um irmão chamado Jake."
+  },
+  {
+    "name": "Frieren",
+    "anime": "Frieren",
+    "dica1": "🔍 Ela é uma elfa imortal!",
+    "dica2": "🔍 Viaja com seus aprendizes.",
+    "dica3": "🔍 Adora livros de magia."
+  },
+  {
+    "name": "Gohan",
+    "anime": "Dragon Ball Z",
+    "dica1": "🔍 Ele é o filho do Goku!",
+    "dica2": "🔍 Se transforma em Super Saiyajin 2.",
+    "dica3": "🔍 Seu mentor é o Piccolo."
+  },
+  {
+    "name": "Goku",
+    "anime": "Dragon Ball Z",
+    "dica1": "🔍 Ele é um Saiyajin que adora lutar!",
+    "dica2": "🔍 Sua técnica é o Kamehameha.",
+    "dica3": "🔍 Tem um irmão chamado Raditz."
+  },
+  {
+    "name": "Gumball",
+    "anime": "Gumball",
+    "dica1": "🔍 Ele é um gato azul!",
+    "dica2": "🔍 Sempre arruma confusão.",
+    "dica3": "🔍 Melhor amigo é o Darwin."
+  },
+  {
+    "name": "Gon",
+    "anime": "Hunter x Hunter",
+    "dica1": "🔍 Ele quer ser um Hunter!",
+    "dica2": "🔍 Usa uma vara de pescar como arma.",
+    "dica3": "🔍 Seu melhor amigo é o Killua."
+  },
+  {
+    "name": "Gwen Stacy",
+    "anime": "Spider-Verse",
+    "dica1": "🔍 Ela é a Mulher-Aranha!",
+    "dica2": "🔍 É loira e usa capuz.",
+    "dica3": "🔍 Vem de uma dimensão alternativa."
+  },
+  {
+    "name": "Homem de Ferro",
+    "anime": "Marvel",
+    "dica1": "🔍 Ele é um bilionário com uma armadura!",
+    "dica2": "🔍 Seu nome é Tony Stark.",
+    "dica3": "🔍 Tem um reator Arc no peito."
+  },
+  {
+    "name": "Homem-Aranha",
+    "anime": "Marvel",
+    "dica1": "🔍 Ele é um herói que lança teias!",
+    "dica2": "🔍 Seu nome é Peter Parker.",
+    "dica3": "🔍 Foi picado por uma aranha radioativa."
+  },
+  {
+    "name": "Ino",
+    "anime": "Naruto",
+    "dica1": "🔍 Ela é uma kunoichi do clã Yamanaka!",
+    "dica2": "🔍 Usa técnicas de transferência mental.",
+    "dica3": "🔍 É loira e tem uma flor na cabeça."
+  },
+  {
+    "name": "Inosuke",
+    "anime": "Demon Slayer",
+    "dica1": "🔍 Ele é um caçador de demônios com cabeça de javali!",
+    "dica2": "🔍 Usa duas espadas.",
+    "dica3": "🔍 É muito agressivo e selvagem."
+  },
+  {
+    "name": "Isagi",
+    "anime": "Blue Lock",
+    "dica1": "🔍 Ele é um jogador de futebol!",
+    "dica2": "🔍 Seu sonho é ser o melhor atacante.",
+    "dica3": "🔍 Tem cabelo preto e usa uma camisa azul."
+  },
+  {
+    "name": "Itachi",
+    "anime": "Naruto",
+    "dica1": "🔍 Ele é um ninja do clã Uchiha.",
+    "dica2": "🔍 Tem o Mangekyou Sharingan.",
+    "dica3": "🔍 Matou todo o seu clã."
+  },
+  {
+    "name": "Itachi e Kisame",
+    "anime": "Naruto",
+    "dica1": "🔍 Eles são membros da Akatsuki!",
+    "dica2": "🔍 Itachi tem olhos vermelhos.",
+    "dica3": "🔍 Kisame parece um tubarão."
+  },
+  {
+    "name": "Jack",
+    "anime": "Samurai Jack",
+    "dica1": "🔍 Ele é um samurai viajante!",
+    "dica2": "🔍 Usa uma katana mágica.",
+    "dica3": "🔍 Foi enviado para o futuro pelo Aku."
+  },
+  {
+    "name": "Jay",
+    "anime": "Ninjago",
+    "dica1": "🔍 Ele é o ninja do trovão!",
+    "dica2": "🔍 Usa azul.",
+    "dica3": "🔍 É o mais engraçado do time."
+  },
+  {
+    "name": "Jiraiya",
+    "anime": "Naruto",
+    "dica1": "🔍 Ele é o Sábio dos Sapos!",
+    "dica2": "🔍 Foi mentor de Naruto.",
+    "dica3": "🔍 Escreve livros eróticos."
+  },
+  {
+    "name": "Kai",
+    "anime": "Ninjago",
+    "dica1": "🔍 Ele é o ninja do fogo!",
+    "dica2": "🔍 Usa vermelho.",
+    "dica3": "🔍 É o mais impulsivo do time."
+  },
+  {
+    "name": "Kakashi",
+    "anime": "Naruto",
+    "dica1": "🔍 Ele é o ninja copiador!",
+    "dica2": "🔍 Tem um Sharingan no olho esquerdo.",
+    "dica3": "🔍 Sempre lê o livro Icha Icha."
+  },
+  {
+    "name": "Killua",
+    "anime": "Hunter x Hunter",
+    "dica1": "🔍 Ele é um assassino profissional!",
+    "dica2": "🔍 Tem cabelo branco e usa roupas largas.",
+    "dica3": "🔍 Seu melhor amigo é o Gon."
+  },
+  {
+    "name": "Kira",
+    "anime": "Death Note",
+    "dica1": "🔍 Ele quer criar um novo mundo!",
+    "dica2": "🔍 Usa um caderno da morte.",
+    "dica3": "🔍 Seu nome é Light Yagami."
+  },
+  {
+    "name": "Knuckles",
+    "anime": "Sonic",
+    "dica1": "🔍 Ele é um equidna vermelho!",
+    "dica2": "🔍 É guardião da Master Emerald.",
+    "dica3": "🔍 É rival do Sonic."
+  },
+  {
+    "name": "Kratos",
+    "anime": "God of War",
+    "dica1": "🔍 Ele é o Fantasma de Esparta!",
+    "dica2": "🔍 Usa a Lâmina do Caos.",
+    "dica3": "🔍 Matou deuses gregos."
+  },
+  {
+    "name": "Kuririn",
+    "anime": "Dragon Ball Z",
+    "dica1": "🔍 Ele é o melhor amigo do Goku!",
+    "dica2": "🔍 Não tem nariz.",
+    "dica3": "🔍 Usa a técnica Kienzan."
+  },
+  {
+    "name": "L",
+    "anime": "Death Note",
+    "dica1": "🔍 Ele é um detetive excêntrico!",
+    "dica2": "🔍 Só anda descalço e come doces.",
+    "dica3": "🔍 Seu nome é L Lawliet."
+  },
+  {
+    "name": "Loid",
+    "anime": "Spy x Family",
+    "dica1": "🔍 Ele é um espião!",
+    "dica2": "🔍 Se disfarça de psiquiatra.",
+    "dica3": "🔍 Sua filha se chama Anya."
+  },
+  {
+    "name": "Luffy",
+    "anime": "One Piece",
+    "dica1": "🔍 Ele quer ser o Rei dos Piratas!",
+    "dica2": "🔍 Comeu a fruta Gomu Gomu.",
+    "dica3": "🔍 Usa um chapéu de palha."
+  },
+  {
+    "name": "Makima",
+    "anime": "Chainsaw Man",
+    "dica1": "🔍 Ela é uma controladora!",
+    "dica2": "🔍 Tem olhos amarelos.",
+    "dica3": "🔍 Manipula todos ao seu redor."
+  },
+  {
+    "name": "Megumin",
+    "anime": "Konosuba",
+    "dica1": "🔍 Ela é uma maga especializada em explosão!",
+    "dica2": "🔍 Usa um chapéu de bruxa.",
+    "dica3": "🔍 Só lança uma magia por dia."
+  },
+  {
+    "name": "Miles Morales",
+    "anime": "Spider-Verse",
+    "dica1": "🔍 Ele é o Homem-Aranha!",
+    "dica2": "🔍 Pode se camuflar.",
+    "dica3": "🔍 Usa um moletom e tênis vermelhos."
+  },
+  {
+    "name": "Mitsuri",
+    "anime": "Demon Slayer",
+    "dica1": "🔍 Ela é a Hashira do Amor!",
+    "dica2": "🔍 Tem cabelo rosa e verde.",
+    "dica3": "🔍 Usa uma espada fina e flexível."
+  },
+  {
+    "name": "Mitsuya",
+    "anime": "Tokyo Revengers",
+    "dica1": "🔍 Ele é o capitão da Toman!",
+    "dica2": "🔍 É um grande costureiro.",
+    "dica3": "🔍 Sempre usa um uniforme escolar."
+  },
+  {
+    "name": "Miwa",
+    "anime": "Jujutsu Kaisen",
+    "dica1": "🔍 Ela é uma feiticeira novata!",
+    "dica2": "🔍 Usa uma espada.",
+    "dica3": "🔍 É fã do Gojo."
+  },
+  {
+    "name": "Mordecai",
+    "anime": "Regular Show",
+    "dica1": "🔍 Ele é um gaio azul!",
+    "dica2": "🔍 Trabalha no parque.",
+    "dica3": "🔍 Melhor amigo é o Rigby."
+  },
+  {
+    "name": "Nagi",
+    "anime": "Blue Lock",
+    "dica1": "🔍 Ele é um jogador de futebol!",
+    "dica2": "🔍 É muito talentoso mas preguiçoso.",
+    "dica3": "🔍 Tem cabelo preto e usa uma camisa branca."
+  },
+  {
+    "name": "Nami",
+    "anime": "One Piece",
+    "dica1": "🔍 Ela é a navegadora dos Chapéus de Palha!",
+    "dica2": "🔍 Adora dinheiro.",
+    "dica3": "🔍 Usa um bastão climat."
+  },
+  {
+    "name": "Naruto Uzumaki",
+    "anime": "Naruto",
+    "dica1": "🔍 Ele é um ninja loiro que quer virar Hokage!",
+    "dica2": "🔍 Tem uma raposa de nove caudas dentro dele.",
+    "dica3": "🔍 Seu melhor amigo se chama Sasuke."
+  },
+  {
+    "name": "Time 7",
+    "anime": "Naruto",
+    "dica1": "🔍 Eles são o Time 7!",
+    "dica2": "🔍 Naruto é loiro, Sakura é rosa.",
+    "dica3": "🔍 Sasuke é preto, Kakashi tem cabelo prateado."
+  },
+  {
+    "name": "Nezuko",
+    "anime": "Demon Slayer",
+    "dica1": "🔍 Ela é uma demônio!",
+    "dica2": "🔍 Usa uma mordaça na boca.",
+    "dica3": "🔍 É irmã do Tanjiro."
+  },
+  {
+    "name": "Nico Robin",
+    "anime": "One Piece",
+    "dica1": "🔍 Ela é a arqueóloga dos Chapéus de Palha!",
+    "dica2": "🔍 Pode criar membros extras.",
+    "dica3": "🔍 É muito inteligente."
+  },
+  {
+    "name": "Nobara",
+    "anime": "Jujutsu Kaisen",
+    "dica1": "🔍 Ela é uma feiticeira!",
+    "dica2": "🔍 Usa um martelo e pregos.",
+    "dica3": "🔍 É muito corajosa."
+  },
+  {
+    "name": "Obanai",
+    "anime": "Demon Slayer",
+    "dica1": "🔍 Ele é o Hashira da Serpente!",
+    "dica2": "🔍 Tem uma cobra no ombro.",
+    "dica3": "🔍 Esconde o rosto com uma máscara."
+  },
+  {
+    "name": "Power",
+    "anime": "Chainsaw Man",
+    "dica1": "🔍 Ela é um demônio do sangue!",
+    "dica2": "🔍 Usa um martelo.",
+    "dica3": "🔍 Adora comer."
+  },
+  {
+    "name": "Ravena",
+    "anime": "Teen Titans",
+    "dica1": "🔍 Ela é uma feiticeira!",
+    "dica2": "🔍 Tem cabelo roxo e usa capuz.",
+    "dica3": "🔍 É filha de um demônio."
+  },
+  {
+    "name": "Rem",
+    "anime": "Re:Zero",
+    "dica1": "🔍 Ela é uma demônio!",
+    "dica2": "🔍 Trabalha como empregada.",
+    "dica3": "🔍 Tem cabelo azul."
+  },
+  {
+    "name": "Reze",
+    "anime": "Chainsaw Man",
+    "dica1": "🔍 Ela é uma demônio!",
+    "dica2": "🔍 É loira e usa uma jaqueta.",
+    "dica3": "🔍 Se transforma em uma bomba."
+  },
+  {
+    "name": "Rigby",
+    "anime": "Regular Show",
+    "dica1": "🔍 Ele é um guaxinim!",
+    "dica2": "🔍 Trabalha no parque.",
+    "dica3": "🔍 Melhor amigo é o Mordecai."
+  },
+  {
+    "name": "Robin",
+    "anime": "Teen Titans",
+    "dica1": "🔍 Ele é o líder dos Titãs!",
+    "dica2": "🔍 Usa um bastão e um uniforme verde.",
+    "dica3": "🔍 Foi aprendiz do Batman."
+  },
+  {
+    "name": "Sakura",
+    "anime": "Naruto",
+    "dica1": "🔍 Ela é uma kunoichi!",
+    "dica2": "🔍 Tem força sobre-humana.",
+    "dica3": "🔍 É médica e tem cabelo rosa."
+  },
+  {
+    "name": "Sasuke",
+    "anime": "Naruto",
+    "dica1": "🔍 Ele é um ninja do clã Uchiha.",
+    "dica2": "🔍 Quer vingar seu clã.",
+    "dica3": "🔍 Usa o Sharingan."
+  },
+  {
+    "name": "Satoru Gojo",
+    "anime": "Jujutsu Kaisen",
+    "dica1": "🔍 Ele é o feiticeiro mais forte!",
+    "dica2": "🔍 Usa uma venda nos olhos.",
+    "dica3": "🔍 Sempre aparece com doces."
+  },
+  {
+    "name": "Shadow",
+    "anime": "Sonic",
+    "dica1": "🔍 Ele é um ouriço preto!",
+    "dica2": "🔍 É rival do Sonic.",
+    "dica3": "🔍 Usa sapatos com rodinhas."
+  },
+  {
+    "name": "Sonic",
+    "anime": "Sonic",
+    "dica1": "🔍 Ele é o ouriço mais rápido do mundo!",
+    "dica2": "🔍 É azul.",
+    "dica3": "🔍 Adora chili dogs."
+  },
+  {
+    "name": "Star Fire",
+    "anime": "Teen Titans",
+    "dica1": "🔍 Ela é uma princesa alienígena!",
+    "dica2": "🔍 Tem cabelo laranja e pele alaranjada.",
+    "dica3": "🔍 Lança raios de energia."
+  },
+  {
+    "name": "Sukuna",
+    "anime": "Jujutsu Kaisen",
+    "dica1": "🔍 Ele é o Rei das Maldições!",
+    "dica2": "🔍 Tem tatuagens.",
+    "dica3": "🔍 Possui quatro olhos."
+  },
+  {
+    "name": "Tails",
+    "anime": "Sonic",
+    "dica1": "🔍 Ele é uma raposa com duas caudas!",
+    "dica2": "🔍 Melhor amigo do Sonic.",
+    "dica3": "🔍 É muito inteligente."
+  },
+  {
+    "name": "Tanjiro",
+    "anime": "Demon Slayer",
+    "dica1": "🔍 Ele é um caçador de demônios!",
+    "dica2": "🔍 Usa técnicas de respiração.",
+    "dica3": "🔍 Tem um brinco hanafuda."
+  },
+  {
+    "name": "Toge Inumaki",
+    "anime": "Jujutsu Kaisen",
+    "dica1": "🔍 Ele é um feiticeiro!",
+    "dica2": "🔍 Só fala com palavras de comida.",
+    "dica3": "🔍 Tem uma tatuagem no rosto."
+  },
+  {
+    "name": "Toji",
+    "anime": "Jujutsu Kaisen",
+    "dica1": "🔍 Ele é o Assassino de Feiticeiros!",
+    "dica2": "🔍 Não tem energia amaldiçoada.",
+    "dica3": "🔍 Usa uma arma amaldiçoada."
+  },
+  {
+    "name": "Tony Stark",
+    "anime": "Marvel",
+    "dica1": "🔍 Ele é o Homem de Ferro!",
+    "dica2": "🔍 É bilionário e genial.",
+    "dica3": "🔍 Tem um reator Arc no peito."
+  },
+  {
+    "name": "Trunks",
+    "anime": "Dragon Ball Z",
+    "dica1": "🔍 Ele é o filho do Vegeta!",
+    "dica2": "🔍 É um Super Saiyajin.",
+    "dica3": "🔍 Veio do futuro."
+  },
+  {
+    "name": "Yuta",
+    "anime": "Jujutsu Kaisen",
+    "dica1": "🔍 Ele é um feiticeiro poderoso!",
+    "dica2": "🔍 Tem uma maldição chamada Rika.",
+    "dica3": "🔍 Usa uma espada amaldiçoada."
+  },
+  {
+    "name": "Zane",
+    "anime": "Ninjago",
+    "dica1": "🔍 Ele é o ninja do gelo!",
+    "dica2": "🔍 É um androide.",
+    "dica3": "🔍 Usa branco."
+  },
+  {
+    "name": "Zoro",
+    "anime": "One Piece",
+    "dica1": "🔍 Ele é o espadachim dos Chapéus de Palha!",
+    "dica2": "🔍 Usa três espadas.",
+    "dica3": "🔍 Tem cabelo verde."
+  }
+]
