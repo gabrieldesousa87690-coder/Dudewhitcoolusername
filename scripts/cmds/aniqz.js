@@ -230,12 +230,7 @@ async function startQuiz(api, event, usersData) {
 
         // 🔥 TEXTO DA PERGUNTA
         const question = `📺 **QUIZ DE ANIME**\n\n` +
-            `🔍 Quem é esse personagem?\n` +
-            `📖 **Anime:** ${animeName}\n\n` +
-            `💡 **Dicas:**\n` +
-            `${character.dica1 || ''}\n` +
-            `${character.dica2 || ''}\n` +
-            `${character.dica3 || ''}\n\n` +
+            `🔍 Quem é esse personagem?\n`
             `⏳ Você tem 30 segundos para responder!\n` +
             `🏆 **Quem atingir ${WINNER_POINTS.toLocaleString()} pontos primeiro ganha!**\n\n` +
             `📊 **Prêmios finais:**\n` +
@@ -250,7 +245,7 @@ async function startQuiz(api, event, usersData) {
         // 🔥 DEPOIS ENVIA A IMAGEM SEPARADA (SE TIVER)
         if (imageAttachment) {
             await api.sendMessage({
-                body: `🖼️ **Personagem:** ${characterName}`,
+                body: `🖼️ Foto}`,
                 attachment: imageAttachment
             }, threadID);
         }
