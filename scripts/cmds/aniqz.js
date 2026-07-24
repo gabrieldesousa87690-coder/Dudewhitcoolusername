@@ -77,7 +77,7 @@ module.exports = {
     config: {
         name: "animequiz",
         aliases: ["aq", "quizanime"],
-        version: "5.0",
+        version: "6.0",
         author: "Hinata",
         countDown: 10,
         role: 0,
@@ -111,17 +111,26 @@ module.exports = {
         await startQuiz(api, event, usersData);
     },
 
-    onReply: async function ({ api, event, Reply, usersData }) {
+    // 🔥 LISTENER DE MENSAGENS (CAPTURA QUALQUER MENSAGEM)
+    onEvent: async function ({ api, event, usersData }) {
         const { threadID, senderID, body } = event;
-        const quiz = quizState[threadID];
 
-        if (!quiz || !quiz.active) return;
+        // 🔥 VERIFICA SE É UMA MENSAGEM DE TEXTO
         if (!body || body.length < 2) return;
 
-        if (quiz.answers.some(a => a.senderID === senderID)) {
-            return api.sendMessage('⏳ | Você já respondeu esta pergunta!', threadID);
-        }
+        const quiz = quizState[threadID];
+        if (!quiz || !quiz.active) return;
 
+        // 🔥 IGNORA SE FOR O PRÓPRIO BOT
+        if (senderID === api.getCurrentUserID()) return;
+
+        // 🔥 IGNORA SE FOR COMANDO
+        if (body.startsWith('!')) return;
+
+        // 🔥 VERIFICA SE O USUÁRIO JÁ RESPONDEU
+        if (quiz.answers.some(a => a.senderID === senderID)) return;
+
+        // 🔥 NORMALIZA OS NOMES
         const normalizeName = (name) => {
             return name
                 .normalize('NFD')
@@ -142,10 +151,10 @@ module.exports = {
         if (isCorrect) {
             const position = quiz.answers.length + 1;
 
-            // 🔥 CALCULA PONTOS BASEADO NA POSIÇÃO
+            // 🔥 CALCULA PONTOS
             let points = 0;
             if (position === 1) {
-                points = 500;
+                points = 300;
             } else if (position === 2) {
                 points = 200;
             } else if (position === 3) {
@@ -187,11 +196,13 @@ module.exports = {
 
             api.sendMessage(msg, threadID);
 
+            // 🔥 VERIFICA SE ALGUÉM ATINGIU 10.000 PONTOS
             if (newPoints >= WINNER_POINTS) {
                 await endGame(api, threadID, usersData);
                 return;
             }
 
+            // 🔥 SE 3 PESSOAS ACERTAREM, ENCERRA A RODADA
             if (quiz.answers.length >= 3) {
                 let resultMsg = `🏁 Rodada finalizada!\n\n📊 Resultados:\n`;
                 quiz.answers.forEach((a, i) => {
@@ -204,9 +215,15 @@ module.exports = {
                 });
                 api.sendMessage(resultMsg, threadID);
 
+                // 🔥 COMEÇA NOVA RODADA
                 await startQuiz(api, { threadID, senderID, messageID: quiz.messageID }, usersData);
             }
         }
+    },
+
+    onReply: async function ({ api, event, Reply, usersData }) {
+        // 🔥 MANTIDO PARA COMPATIBILIDADE, MAS NÃO USA MAIS
+        return;
     }
 };
 
@@ -236,7 +253,7 @@ async function startQuiz(api, event, usersData) {
         const question = `📺 QUIZ DE ANIME\n\n` +
             `🔍 Quem é esse personagem?\n` +
             `📖 Anime: ${animeName}\n\n` +
-            `⏳ Você tem 30 segundos para responder!\n` +
+            `⏳ Você tem 10 segundos para responder!\n` +
             `🏆 Quem atingir ${WINNER_POINTS.toLocaleString()} pontos primeiro ganha!\n\n` +
             `📊 Prêmios finais:\n` +
             `🥇 1º: 30.000$\n` +
@@ -262,15 +279,8 @@ async function startQuiz(api, event, usersData) {
             messageID: sentMessage.messageID,
             timeout: setTimeout(async () => {
                 await endRound(api, threadID, usersData);
-            }, 30000)
+            }, 10000) // 🔥 10 SEGUNDOS
         };
-
-        global.GoatBot.onReply.set(sentMessage.messageID, {
-            commandName: "animequiz",
-            author: senderID,
-            messageID: sentMessage.messageID,
-            threadID: threadID
-        });
 
     } catch (error) {
         console.error('❌ Erro no quiz:', error);
