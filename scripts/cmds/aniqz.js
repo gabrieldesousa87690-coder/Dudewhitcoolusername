@@ -1,4 +1,4 @@
-!cmd install aniq.js const axios = require('axios');
+const axios = require('axios');
 const Canvas = require('canvas');
 const fs = require('fs-extra');
 const path = require('path');
