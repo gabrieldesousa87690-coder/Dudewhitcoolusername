@@ -1,36 +1,54 @@
-const axios = require('axios');
+!cmd install aniq.js const axios = require('axios');
 const Canvas = require('canvas');
 const fs = require('fs-extra');
 const path = require('path');
 
-// 🔥 FUNÇÃO INTELIGENTE PRA ACHAR A IMAGEM (MESMO COM NOME ERRADO)
-function findImageFile(characterName, quizPath) {
-    if (!fs.existsSync(quizPath)) return null;
+// 🔥 CAMINHO DAS IMAGENS
+const DATA_PATH = path.join(__dirname, '..', '..', 'database', 'data');
 
-    const files = fs.readdirSync(quizPath);
+// 🔥 ESTADO DO QUIZ POR GRUPO
+const quizState = {};
+
+// 🔥 PRÊMIOS FINAIS
+const FINAL_PRIZES = {
+    1: 30000,
+    2: 15000,
+    3: 7500
+};
+
+// 🔥 META DE PONTOS
+const WINNER_POINTS = 10000;
+
+// 🔥 FUNÇÃO INTELIGENTE PRA ACHAR A IMAGEM
+function findImageFile(characterName) {
+    if (!fs.existsSync(DATA_PATH)) return null;
+
+    const files = fs.readdirSync(DATA_PATH);
     const searchName = characterName.toLowerCase().replace(/[^a-z0-9]/g, '');
 
     for (const file of files) {
         const fileName = file.toLowerCase().replace(/[^a-z0-9]/g, '');
         if (fileName.includes(searchName) || searchName.includes(fileName)) {
-            return path.join(quizPath, file);
+            return path.join(DATA_PATH, file);
         }
     }
     return null;
 }
 
-// 🔥 CAMINHO DAS IMAGENS
-const QUIZ_PATH = path.join(__dirname, '..', '..', 'database', 'data');
-
-// 🔥 ESTADO DO QUIZ
-const quizState = {};
-
-// 🔥 PRÊMIOS
-const PRIZES = {
-    1: 30000,
-    2: 15000,
-    3: 7500
-};
+// 🔥 FUNÇÃO PARA CARREGAR PERSONAGENS
+function loadCharacters() {
+    try {
+        const jsonPath = path.join(DATA_PATH, 'characters.json');
+        if (!fs.existsSync(jsonPath)) {
+            console.log('⚠️ characters.json não encontrado! Usando lista local.');
+            return LOCAL_CHARACTERS;
+        }
+        return fs.readJSONSync(jsonPath);
+    } catch (error) {
+        console.error('❌ Erro ao carregar characters.json:', error.message);
+        return LOCAL_CHARACTERS;
+    }
+}
 
 // 🔥 LISTA LOCAL (FALLBACK)
 const LOCAL_CHARACTERS = [
@@ -40,21 +58,6 @@ const LOCAL_CHARACTERS = [
     { name: 'Roronoa Zoro', anime: 'One Piece' },
     { name: 'Goku', anime: 'Dragon Ball Z' }
 ];
-
-// 🔥 CARREGA PERSONAGENS DO JSON
-function loadCharacters() {
-    try {
-        const jsonPath = path.join(QUIZ_PATH, 'characters.json');
-        if (!fs.existsSync(jsonPath)) {
-            console.log('⚠️ characters.json não encontrado. Usando lista local.');
-            return LOCAL_CHARACTERS;
-        }
-        return fs.readJSONSync(jsonPath);
-    } catch (error) {
-        console.error('❌ Erro ao carregar characters.json:', error.message);
-        return LOCAL_CHARACTERS;
-    }
-}
 
 // 🔥 BUSCA PERSONAGEM
 async function fetchCharacter() {
@@ -77,11 +80,13 @@ module.exports = {
     config: {
         name: "animequiz",
         aliases: ["aq", "quizanime"],
-        version: "3.0",
+        version: "5.0",
         author: "Hinata",
         countDown: 10,
         role: 0,
-        description: { pt: "Quiz de anime! Responda e ganhe dinheiro!" },
+        description: {
+            pt: "Quiz de anime! Primeiro a atingir 10.000 pontos ganha!"
+        },
         category: "game",
         guide: {
             pt: "   {pn}: Inicia um quiz\n" +
@@ -139,24 +144,21 @@ module.exports = {
 
         if (isCorrect) {
             const position = quiz.answers.length + 1;
-            let prize = 50;
-            if (position === 1) prize = PRIZES[1];
-            else if (position === 2) prize = PRIZES[2];
-            else if (position === 3) prize = PRIZES[3];
 
-            quiz.answers.push({ senderID, prize, position });
-
-            const userData = await usersData.get(senderID);
-            const currentPoints = userData.data?.quizPoints || 0;
-
-            await usersData.set(senderID, {
-                "data.quizPoints": currentPoints + 1,
-                "data.quizWins": (userData.data?.quizWins || 0) + 1,
-                "data.quizMoney": (userData.data?.quizMoney || 0) + prize
+            // 🔥 SALVA A RESPOSTA (sem dinheiro, só pontos)
+            quiz.answers.push({
+                senderID: senderID,
+                position: position
             });
 
+            // 🔥 ATUALIZA PONTOS DO USUÁRIO (SÓ PONTOS, SEM DINHEIRO)
+            const userData = await usersData.get(senderID);
+            const currentPoints = userData.data?.quizPoints || 0;
+            const newPoints = currentPoints + 1;
+
             await usersData.set(senderID, {
-                money: (userData.money || 0) + prize
+                "data.quizPoints": newPoints,
+                "data.quizWins": (userData.data?.quizWins || 0) + 1
             });
 
             let medal = '';
@@ -167,7 +169,7 @@ module.exports = {
             const name = userData.name || `User_${senderID}`;
             let msg = `✅ **${medal} ${name} acertou!**\n` +
                 `🎯 Posição: ${position}º\n` +
-                `💰 +${prize.toLocaleString()}$\n\n` +
+                `📊 Pontos: ${newPoints}/${WINNER_POINTS}\n\n` +
                 `📝 Resposta: **${quiz.characterName}**`;
 
             if (position === 1) {
@@ -176,8 +178,27 @@ module.exports = {
 
             api.sendMessage(msg, threadID);
 
-            if (quiz.answers.length >= 3) {
+            // 🔥 VERIFICA SE ALGUÉM ATINGIU 10.000 PONTOS
+            if (newPoints >= WINNER_POINTS) {
                 await endQuiz(api, threadID, usersData);
+                return;
+            }
+
+            // 🔥 SE 3 PESSOAS ACERTAREM, ENCERRA A RODADA E COMEÇA OUTRA
+            if (quiz.answers.length >= 3) {
+                // 🔥 MOSTRA OS RESULTADOS DA RODADA
+                let resultMsg = `🏁 **RODADA FINALIZADA!**\n\n📊 **Resultados:**\n`;
+                quiz.answers.forEach((a, i) => {
+                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+                    const userData = usersData.get(a.senderID);
+                    const name = userData?.name || `User_${a.senderID}`;
+                    const points = userData?.data?.quizPoints || 0;
+                    resultMsg += `${medal} ${name}: ${points} pts\n`;
+                });
+                api.sendMessage(resultMsg, threadID);
+
+                // 🔥 RESETA A RODADA E COMEÇA OUTRA PERGUNTA
+                await startQuiz(api, { threadID, senderID, messageID: quiz.messageID }, usersData);
             }
         }
     }
@@ -192,7 +213,8 @@ async function startQuiz(api, event, usersData) {
         const characterName = character.name;
         const animeName = character.anime || 'Anime desconhecido';
 
-        const imagePath = findImageFile(characterName, QUIZ_PATH);
+        // 🔥 PROCURA A IMAGEM
+        const imagePath = findImageFile(characterName);
         let imageAttachment = null;
 
         if (imagePath) {
@@ -206,6 +228,7 @@ async function startQuiz(api, event, usersData) {
             console.log(`⚠️ Imagem não encontrada para: ${characterName}`);
         }
 
+        // 🔥 TEXTO DA PERGUNTA
         const question = `📺 **QUIZ DE ANIME**\n\n` +
             `🔍 Quem é esse personagem?\n` +
             `📖 **Anime:** ${animeName}\n\n` +
@@ -214,22 +237,25 @@ async function startQuiz(api, event, usersData) {
             `${character.dica2 || ''}\n` +
             `${character.dica3 || ''}\n\n` +
             `⏳ Você tem 30 segundos para responder!\n` +
-            `💰 **Prêmios:**\n` +
+            `🏆 **Quem atingir ${WINNER_POINTS.toLocaleString()} pontos primeiro ganha!**\n\n` +
+            `📊 **Prêmios finais:**\n` +
             `🥇 1º: 30.000$\n` +
             `🥈 2º: 15.000$\n` +
             `🥉 3º: 7.500$\n\n` +
             `📝 Digite o nome do personagem!`;
 
-        let sentMessage;
+        // 🔥 ENVIA O TEXTO
+        const sentMessage = await api.sendMessage(question, threadID, messageID);
+
+        // 🔥 DEPOIS ENVIA A IMAGEM SEPARADA (SE TIVER)
         if (imageAttachment) {
-            sentMessage = await api.sendMessage({
-                body: question,
+            await api.sendMessage({
+                body: `🖼️ **Personagem:** ${characterName}`,
                 attachment: imageAttachment
-            }, threadID, messageID);
-        } else {
-            sentMessage = await api.sendMessage(question, threadID, messageID);
+            }, threadID);
         }
 
+        // 🔥 GUARDA O ESTADO DO QUIZ
         quizState[threadID] = {
             active: true,
             character: character,
@@ -238,10 +264,11 @@ async function startQuiz(api, event, usersData) {
             startTime: Date.now(),
             messageID: sentMessage.messageID,
             timeout: setTimeout(async () => {
-                await endQuiz(api, threadID, usersData);
+                await endRound(api, threadID, usersData);
             }, 30000)
         };
 
+        // 🔥 REGISTRA O onReply
         global.GoatBot.onReply.set(sentMessage.messageID, {
             commandName: "animequiz",
             author: senderID,
@@ -255,12 +282,11 @@ async function startQuiz(api, event, usersData) {
     }
 }
 
-// 🔥 FINALIZA O QUIZ
-async function endQuiz(api, threadID, usersData) {
+// 🔥 FINALIZA UMA RODADA
+async function endRound(api, threadID, usersData) {
     const quiz = quizState[threadID];
     if (!quiz || !quiz.active) return;
 
-    console.log(`🏁 Finalizando quiz no grupo ${threadID}`);
     quiz.active = false;
 
     if (quiz.timeout) {
@@ -272,38 +298,103 @@ async function endQuiz(api, threadID, usersData) {
     const characterName = quiz.characterName;
 
     if (winners.length === 0) {
-        const msg = `⏰ **TEMPO ESGOTADO!**\n\nNinguém acertou a pergunta.\n📝 Resposta: **${characterName}**`;
-        return api.sendMessage(msg, threadID);
-    }
-
-    try {
-        const imagePath = await generateWinnerImage(winners, usersData, characterName);
-        const msg = `🏁 **QUIZ FINALIZADO!**\n📝 Resposta: **${characterName}**`;
-
-        return api.sendMessage({
-            body: msg,
-            attachment: fs.createReadStream(imagePath)
-        }, threadID, () => {
-            if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-        });
-
-    } catch (error) {
-        console.error('❌ Erro ao gerar imagem:', error);
-
-        let msg = `🏁 **QUIZ FINALIZADO!**\n\n📝 Resposta: **${characterName}**\n\n📊 **RESULTADOS:**\n`;
-        winners.forEach((w, i) => {
-            const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
-            const userData = usersData.get(w.senderID);
-            const name = userData?.name || `User_${w.senderID}`;
-            msg += `${medal} ${name}: +${w.prize.toLocaleString()}$\n`;
-        });
+        const msg = `⏰ **TEMPO ESGOTADO!**\n\nNinguém acertou a pergunta.\n📝 Resposta: **${characterName}**\n\n🔄 Nova rodada em breve...`;
         api.sendMessage(msg, threadID);
+        
+        // 🔥 COMEÇA UMA NOVA RODADA
+        setTimeout(async () => {
+            await startQuiz(api, { threadID, messageID: quiz.messageID, senderID: quiz.senderID }, usersData);
+        }, 3000);
+        return;
     }
+
+    // 🔥 MOSTRA OS RESULTADOS DA RODADA
+    let resultMsg = `🏁 **RODADA FINALIZADA!**\n\n📝 Resposta: **${characterName}**\n\n📊 **Resultados:**\n`;
+    winners.forEach((a, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+        const userData = usersData.get(a.senderID);
+        const name = userData?.name || `User_${a.senderID}`;
+        const points = userData?.data?.quizPoints || 0;
+        resultMsg += `${medal} ${name}: ${points} pts\n`;
+    });
+    api.sendMessage(resultMsg, threadID);
+
+    // 🔥 VERIFICA SE ALGUÉM ATINGIU 10.000 PONTOS (se tiver, encerra o jogo)
+    for (const answer of quiz.answers) {
+        const userData = await usersData.get(answer.senderID);
+        const points = userData?.data?.quizPoints || 0;
+        if (points >= WINNER_POINTS) {
+            await endGame(api, threadID, usersData);
+            return;
+        }
+    }
+
+    // 🔥 COMEÇA UMA NOVA RODADA
+    setTimeout(async () => {
+        await startQuiz(api, { threadID, messageID: quiz.messageID, senderID: quiz.senderID }, usersData);
+    }, 3000);
 
     delete quizState[threadID];
 }
 
-// 🔥 GERA IMAGEM DOS VENCEDORES
+// 🔥 FINALIZA O JOGO (QUANDO ALGUÉM ATINGE 10.000 PONTOS)
+async function endGame(api, threadID, usersData) {
+    const quiz = quizState[threadID];
+    if (!quiz) return;
+
+    // 🔥 PEGA TODOS OS JOGADORES E ORDENA POR PONTOS
+    const allUsers = await usersData.getAll();
+    const players = allUsers
+        .filter(u => (u.data?.quizPoints || 0) > 0)
+        .map(u => ({
+            userID: u.userID,
+            name: u.name || `User_${u.userID}`,
+            points: u.data?.quizPoints || 0,
+            wins: u.data?.quizWins || 0
+        }))
+        .sort((a, b) => b.points - a.points);
+
+    const top3 = players.slice(0, 3);
+
+    // 🔥 DISTRIBUI OS PRÊMIOS
+    let prizeMsg = `🏆 **FIM DE JOGO!** 🏆\n\n`;
+    prizeMsg += `🎯 **Alguém atingiu ${WINNER_POINTS.toLocaleString()} pontos!**\n\n`;
+    prizeMsg += `📊 **TOP 3 FINAL:**\n`;
+
+    for (let i = 0; i < Math.min(top3.length, 3); i++) {
+        const player = top3[i];
+        const prize = FINAL_PRIZES[i + 1] || 0;
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+        
+        // 🔥 ADICIONA O DINHEIRO
+        const userData = await usersData.get(player.userID);
+        await usersData.set(player.userID, {
+            money: (userData.money || 0) + prize
+        });
+
+        // 🔥 RESETA OS PONTOS DO QUIZ
+        await usersData.set(player.userID, {
+            "data.quizPoints": 0
+        });
+
+        prizeMsg += `${medal} **${player.name}**\n`;
+        prizeMsg += `   💰 ${player.points} pts | +${prize.toLocaleString()}$\n\n`;
+    }
+
+    // 🔥 RESETA OS PONTOS DOS OUTROS JOGADORES
+    for (const player of players.slice(3)) {
+        await usersData.set(player.userID, {
+            "data.quizPoints": 0
+        });
+    }
+
+    api.sendMessage(prizeMsg, threadID);
+
+    // 🔥 LIMPA O ESTADO
+    delete quizState[threadID];
+}
+
+// 🔥 FUNÇÃO PARA GERAR IMAGEM DOS VENCEDORES (MANTIDA)
 async function generateWinnerImage(winners, usersData, characterName) {
     const width = 1200;
     const height = 600;
@@ -449,8 +540,7 @@ async function showGroupRanking(api, event, usersData) {
         .map(u => ({
             name: u.name || `User_${u.userID}`,
             points: u.data?.quizPoints || 0,
-            wins: u.data?.quizWins || 0,
-            money: u.data?.quizMoney || 0
+            wins: u.data?.quizWins || 0
         }))
         .sort((a, b) => b.points - a.points)
         .slice(0, 10);
@@ -463,7 +553,7 @@ async function showGroupRanking(api, event, usersData) {
     players.forEach((p, i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`;
         msg += `${medal} ${p.name}\n`;
-        msg += `   💰 ${p.points}pts | 🎯 ${p.wins} acertos | 💵 ${p.money.toLocaleString()}$\n\n`;
+        msg += `   💰 ${p.points}pts | 🎯 ${p.wins} acertos\n\n`;
     });
 
     api.sendMessage(msg, threadID, messageID);
@@ -479,8 +569,7 @@ async function showGlobalTop(api, event, usersData) {
         .map(u => ({
             name: u.name || `User_${u.userID}`,
             points: u.data?.quizPoints || 0,
-            wins: u.data?.quizWins || 0,
-            money: u.data?.quizMoney || 0
+            wins: u.data?.quizWins || 0
         }))
         .sort((a, b) => b.points - a.points)
         .slice(0, 10);
@@ -493,7 +582,7 @@ async function showGlobalTop(api, event, usersData) {
     players.forEach((p, i) => {
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`;
         msg += `${medal} ${p.name}\n`;
-        msg += `   💰 ${p.points}pts | 🎯 ${p.wins} acertos | 💵 ${p.money.toLocaleString()}$\n\n`;
+        msg += `   💰 ${p.points}pts | 🎯 ${p.wins} acertos\n\n`;
     });
 
     api.sendMessage(msg, threadID, messageID);
