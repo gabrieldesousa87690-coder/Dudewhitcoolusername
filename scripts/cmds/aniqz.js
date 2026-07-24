@@ -20,7 +20,7 @@ function findImageFile(characterName, quizPath) {
 }
 
 // 🔥 CAMINHO DAS IMAGENS
-const QUIZ_PATH = path.join(__dirname, '..', '..', 'database', 'data', 'quiz');
+const QUIZ_PATH = path.join(__dirname, '..', '..', 'database', 'data');
 
 // 🔥 ESTADO DO QUIZ
 const quizState = {};
