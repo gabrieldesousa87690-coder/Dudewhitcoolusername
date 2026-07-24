@@ -230,7 +230,7 @@ async function startQuiz(api, event, usersData) {
 
         // 🔥 TEXTO DA PERGUNTA
         const question = `📺 **QUIZ DE ANIME**\n\n` +
-            `🔍 Quem é esse personagem?\n`
+            `🔍 Quem é esse personagem?\n` +
             `⏳ Você tem 30 segundos para responder!\n` +
             `🏆 **Quem atingir ${WINNER_POINTS.toLocaleString()} pontos primeiro ganha!**\n\n` +
             `📊 **Prêmios finais:**\n` +
