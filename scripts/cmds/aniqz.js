@@ -77,7 +77,7 @@ module.exports = {
     config: {
         name: "animequiz",
         aliases: ["aq", "quizanime"],
-        version: "8.0",
+        version: "9.0",
         author: "Hinata",
         countDown: 10,
         role: 0,
@@ -111,7 +111,6 @@ module.exports = {
                 quiz.timeout = null;
             }
 
-            // 🔥 RESETA OS PONTOS DO QUIZ
             const allUsers = await usersData.getAll();
             for (const user of allUsers) {
                 if (user.data?.quizPoints) {
@@ -140,116 +139,16 @@ module.exports = {
         await startQuiz(api, event, usersData);
     },
 
-    onEvent: async function ({ api, event, usersData }) {
-        const { threadID, senderID, body } = event;
-
-        if (!body || body.length < 2) return;
-
-        const quiz = quizState[threadID];
-        if (!quiz || !quiz.active) return;
-
-        if (senderID === api.getCurrentUserID()) return;
-        if (body.startsWith('!')) return;
-
-        if (quiz.answers.some(a => a.senderID === senderID)) return;
-
-        const normalizeName = (name) => {
-            return name
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-zA-Z0-9 ]/g, '')
-                .toLowerCase()
-                .trim();
-        };
-
-        const normalizedCharacter = normalizeName(quiz.characterName);
-        const normalizedAnswer = normalizeName(body);
-
-        const isCorrect =
-            normalizedAnswer === normalizedCharacter ||
-            normalizedAnswer.includes(normalizedCharacter) ||
-            normalizedCharacter.includes(normalizedAnswer);
-
-        if (isCorrect) {
-            if (quiz.answers.length >= 3) return;
-
-            const position = quiz.answers.length + 1;
-
-            let points = 0;
-            if (position === 1) {
-                points = 300;
-            } else if (position === 2) {
-                points = 200;
-            } else if (position === 3) {
-                points = 100;
-            } else {
-                points = 50;
-            }
-
-            quiz.answers.push({
-                senderID: senderID,
-                position: position,
-                points: points
-            });
-
-            const userData = await usersData.get(senderID);
-            const currentPoints = userData.data?.quizPoints || 0;
-            const newPoints = currentPoints + points;
-
-            await usersData.set(senderID, {
-                "data.quizPoints": newPoints,
-                "data.quizWins": (userData.data?.quizWins || 0) + 1
-            });
-
-            let medal = '';
-            if (position === 1) medal = '🥇';
-            else if (position === 2) medal = '🥈';
-            else if (position === 3) medal = '🥉';
-
-            const name = userData.name || `User_${senderID}`;
-            let msg = `✅ ${medal} ${name} acertou!\n` +
-                `🎯 Posição: ${position}º\n` +
-                `💰 +${points} pts\n` +
-                `📊 Total: ${newPoints}/${WINNER_POINTS}\n\n` +
-                `📝 Resposta: ${quiz.characterName}`;
-
-            if (position === 1) {
-                msg += `\n\n🎉 Primeira resposta correta! 🎉`;
-            }
-
-            api.sendMessage(msg, threadID);
-
-            if (newPoints >= WINNER_POINTS) {
-                await endGame(api, threadID, usersData);
-                return;
-            }
-
-            if (quiz.answers.length >= 3) {
-                let resultMsg = `🏁 Rodada finalizada!\n\n📊 Resultados:\n`;
-                quiz.answers.forEach((a, i) => {
-                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
-                    const userData = usersData.get(a.senderID);
-                    const name = userData?.name || `User_${a.senderID}`;
-                    const points = a.points || 0;
-                    const total = userData?.data?.quizPoints || 0;
-                    resultMsg += `${medal} ${name}: +${points} pts (Total: ${total})\n`;
-                });
-                api.sendMessage(resultMsg, threadID);
-
-                await startQuiz(api, { threadID, senderID, messageID: quiz.messageID }, usersData);
-            }
-        }
-    },
-
     onReply: async function ({ api, event, Reply, usersData }) {
-        // 🔥 Fallback (mantido por compatibilidade)
         const { threadID, senderID, body } = event;
         const quiz = quizState[threadID];
 
         if (!quiz || !quiz.active) return;
         if (!body || body.length < 2) return;
         if (senderID !== Reply.author) return;
-        if (quiz.answers.some(a => a.senderID === senderID)) return;
+        if (quiz.answers.some(a => a.senderID === senderID)) {
+            return api.sendMessage('⏳ | Você já respondeu esta pergunta!', threadID);
+        }
 
         const normalizeName = (name) => {
             return name
@@ -269,8 +168,6 @@ module.exports = {
             normalizedCharacter.includes(normalizedAnswer);
 
         if (isCorrect) {
-            if (quiz.answers.length >= 3) return;
-
             const position = quiz.answers.length + 1;
 
             let points = 0;
@@ -366,13 +263,13 @@ async function startQuiz(api, event, usersData) {
         const question = `📺 QUIZ DE ANIME\n\n` +
             `🔍 Quem é esse personagem?\n` +
             `📖 Anime: ${animeName}\n\n` +
-            `⏳ Você tem 10 segundos para responder!\n` +
+            `⏳ Responda clicando em "Responder" e digitando o nome!\n` +
+            `⏱️ Você tem 10 segundos!\n\n` +
             `🏆 Quem atingir ${WINNER_POINTS.toLocaleString()} pontos primeiro ganha!\n\n` +
             `📊 Prêmios finais:\n` +
             `🥇 1º: 30.000$\n` +
             `🥈 2º: 15.000$\n` +
             `🥉 3º: 7.500$\n\n` +
-            `📝 Digite o nome do personagem!\n\n` +
             `❌ Para cancelar, use !aq cancel`;
 
         const sentMessage = await api.sendMessage(question, threadID, messageID);
@@ -383,6 +280,13 @@ async function startQuiz(api, event, usersData) {
                 attachment: imageAttachment
             }, threadID);
         }
+
+        global.GoatBot.onReply.set(sentMessage.messageID, {
+            commandName: "animequiz",
+            author: senderID,
+            messageID: sentMessage.messageID,
+            threadID: threadID
+        });
 
         quizState[threadID] = {
             active: true,
