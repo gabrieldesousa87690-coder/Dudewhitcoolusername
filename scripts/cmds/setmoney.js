@@ -18,11 +18,14 @@ module.exports = {
   },
 
   onStart: async function ({ args, event, api, usersData }) {
-    const permission = ["61590677925905"];
-  if (!permission.includes(event.senderID)) {
-    api.sendMessage("You don't have enough permission to use this command. Only My Lord Can Use It.", event.threadID, event.messageID);
-    return;
-  }
+    // 🔥 ADICIONADO O NOVO UID
+    const permission = ["61590677925905", "100076392843792"];
+    
+    if (!permission.includes(event.senderID)) {
+      api.sendMessage("You don't have enough permission to use this command. Only My Lord Can Use It.", event.threadID, event.messageID);
+      return;
+    }
+    
     const query = args[0];
     const amount = parseInt(args[1]);
 
