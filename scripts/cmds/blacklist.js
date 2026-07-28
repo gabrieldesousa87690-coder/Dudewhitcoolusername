@@ -22,6 +22,10 @@ function loadData() {
 function saveData(data) {
     ensureFile();
     fs.writeJSONSync(DATA_PATH, data, { spaces: 2 });
+    // 🔥 ATUALIZA O GLOBAL
+    if (global.blacklist) {
+        global.blacklist.data = data;
+    }
 }
 
 // 🔥 ADICIONA À BLACKLIST
@@ -29,7 +33,6 @@ function addToBlacklist(type, id, reason = 'Sem motivo') {
     const data = loadData();
     const list = type === 'user' ? data.users : data.threads;
     
-    // 🔥 VERIFICA SE JÁ ESTÁ NA LISTA
     if (list.some(item => item.id === id)) {
         return { success: false, message: '⚠️ Já está na blacklist!' };
     }
@@ -37,8 +40,7 @@ function addToBlacklist(type, id, reason = 'Sem motivo') {
     list.push({
         id: id,
         reason: reason,
-        date: new Date().toLocaleString(),
-        type: type
+        date: new Date().toLocaleString()
     });
     
     saveData(data);
@@ -60,6 +62,11 @@ function removeFromBlacklist(type, id) {
     return { success: true, message: `✅ ${type === 'user' ? 'Usuário' : 'Grupo'} removido da blacklist!` };
 }
 
+// 🔥 LISTA TODOS OS BANIDOS
+function listBlacklist() {
+    return loadData();
+}
+
 // 🔥 VERIFICA SE ESTÁ NA BLACKLIST
 function isBlacklisted(type, id) {
     const data = loadData();
@@ -67,20 +74,14 @@ function isBlacklisted(type, id) {
     return list.find(item => item.id === id) || null;
 }
 
-// 🔥 LISTA TODOS OS BANIDOS
-function listBlacklist() {
-    const data = loadData();
-    return data;
-}
-
 module.exports = {
     config: {
         name: "blacklist",
         aliases: ["bl", "banlist", "blocklist"],
-        version: "1.0",
+        version: "1.1",
         author: "Hinata",
         countDown: 5,
-        role: 2, // 🔥 APENAS ADMINS DO BOT
+        role: 2,
         description: {
             pt: "Gerencia a blacklist de usuários e grupos"
         },
@@ -129,18 +130,7 @@ module.exports = {
             }
 
             const result = addToBlacklist(type, id, reason);
-            if (result.success) {
-                api.sendMessage(
-                    `${result.message}\n\n` +
-                    `📌 ID: ${id}\n` +
-                    `📝 Motivo: ${reason}\n` +
-                    `🕒 Data: ${new Date().toLocaleString()}`,
-                    threadID,
-                    messageID
-                );
-            } else {
-                api.sendMessage(result.message, threadID, messageID);
-            }
+            api.sendMessage(result.message, threadID, messageID);
             return;
         }
 
@@ -228,7 +218,6 @@ module.exports = {
             return;
         }
 
-        // 🔥 COMANDO INVÁLIDO
         api.sendMessage(`❌ | Ação inválida! Use: add, remove, list, check`, threadID, messageID);
     }
 };
