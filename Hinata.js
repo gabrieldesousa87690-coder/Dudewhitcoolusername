@@ -89,6 +89,65 @@ global.db = {
 	receivedTheFirstMessage: {}
 };
 
+// 🔥 ==================== BLACKLIST ==================== //
+const BLACKLIST_PATH = path.normalize(`${__dirname}/scripts/cmds/cache/blacklist.json`);
+
+function loadBlacklist() {
+	try {
+		if (fs.existsSync(BLACKLIST_PATH)) {
+			return fs.readJSONSync(BLACKLIST_PATH);
+		}
+	} catch (e) {
+		log.warn("BLACKLIST", `Erro ao carregar blacklist: ${e.message}`);
+	}
+	return { users: [], threads: [] };
+}
+
+function isBlacklisted(userID, threadID) {
+	const blacklist = loadBlacklist();
+	if (blacklist.users.some(u => u.id == userID)) {
+		return { type: 'user', message: '⚠️ Você está banido de usar o bot!' };
+	}
+	if (blacklist.threads.some(t => t.id == threadID)) {
+		return { type: 'thread', message: '⚠️ Este grupo está banido de usar o bot!' };
+	}
+	return null;
+}
+
+// 🔥 ==================== AFK ==================== //
+const AFK_PATH = path.normalize(`${__dirname}/scripts/cmds/cache/afk_data.json`);
+
+function loadAFK() {
+	try {
+		if (fs.existsSync(AFK_PATH)) {
+			return fs.readJSONSync(AFK_PATH);
+		}
+	} catch (e) {}
+	return {};
+}
+
+function saveAFK(data) {
+	try {
+		fs.ensureDirSync(path.dirname(AFK_PATH));
+		fs.writeJSONSync(AFK_PATH, data, { spaces: 2 });
+	} catch (e) {}
+}
+
+// 🔥 ==================== GLOBALIZAR ==================== //
+global.blacklist = {
+	load: loadBlacklist,
+	check: isBlacklisted,
+	data: loadBlacklist()
+};
+
+global.afk = {
+	load: loadAFK,
+	save: saveAFK,
+	data: loadAFK()
+};
+
+// ======================================================== //
+
 global.client = {
 	dirConfig,
 	dirConfigCommands,
@@ -101,7 +160,9 @@ global.client = {
 		creatingDashBoardData: [],
 		creatingGlobalData: []
 	},
-	commandBanned: configCommands.commandBanned
+	commandBanned: configCommands.commandBanned,
+	blacklist: global.blacklist,
+	afk: global.afk
 };
 
 const utils = require("./utils.js");
