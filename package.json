@@ -70,7 +70,8 @@
     "yt-search": "^2.12.1",
     "ytdl-core": "^4.11.5",
     "@distube/ytdl-core": "^4.13.3",
-    "1secmail-api": "^1.1.1"
+    "1secmail-api": "^1.1.1",
+    "@huggingface/transformers": "^3.0.0"
   },
   "scripts": {
     "start": "set NODE_ENV=&& node index.js",
