@@ -51,25 +51,48 @@ function saveUsers(users) {
     } catch (e) {}
 }
 
-function syncUsersData(bankData) {
-    const bank = bankData || loadBank();
-    const users = loadUsers();
-    
-    for (const [userID, account] of Object.entries(bank)) {
-        const userIndex = users.findIndex(u => u.userID == userID);
-        if (userIndex !== -1) {
-            if (!users[userIndex].data) users[userIndex].data = {};
-            users[userIndex].data.bank = {
-                phone: account.phone,
-                balance: account.balance,
-                debt: account.debt,
-                debtDate: account.debtDate,
-                createdAt: account.createdAt
-            };
+// 🔥 FUNÇÃO PARA GARANTIR QUE O USUÁRIO EXISTE NO usersData
+async function ensureUserExists(userID, usersData) {
+    try {
+        const user = await usersData.get(userID);
+        if (!user) {
+            await usersData.set(userID, {
+                money: 0,
+                exp: 0,
+                name: `User_${userID}`,
+                data: {}
+            });
         }
+        return true;
+    } catch (e) {
+        console.error('Erro ao criar usuário:', e.message);
+        return false;
     }
-    
-    saveUsers(users);
+}
+
+function syncUsersData(bankData) {
+    try {
+        const bank = bankData || loadBank();
+        const users = loadUsers();
+        
+        for (const [userID, account] of Object.entries(bank)) {
+            const userIndex = users.findIndex(u => u.userID == userID);
+            if (userIndex !== -1) {
+                if (!users[userIndex].data) users[userIndex].data = {};
+                users[userIndex].data.bank = {
+                    phone: account.phone,
+                    balance: account.balance,
+                    debt: account.debt,
+                    debtDate: account.debtDate,
+                    createdAt: account.createdAt
+                };
+            }
+        }
+        
+        saveUsers(users);
+    } catch (e) {
+        console.error('Erro ao sincronizar usersData:', e.message);
+    }
 }
 
 function getOrCreateAccount(userID) {
@@ -121,13 +144,13 @@ function calculateInterest(userID) {
     
     const now = Date.now();
     const diff = now - (account.lastInterest || now);
-    const intervals = Math.floor(diff / (30 * 60 * 1000)); // 30 MINUTOS
+    const intervals = Math.floor(diff / (30 * 60 * 1000));
     
     if (intervals > 0) {
         let interest = 0;
         let debt = account.debt;
         for (let i = 0; i < intervals; i++) {
-            interest += Math.floor(debt * 0.01); // 1% de juros
+            interest += Math.floor(debt * 0.01);
             debt += interest;
         }
         account.debt = debt;
@@ -144,7 +167,7 @@ module.exports = {
     config: {
         name: "bank",
         aliases: ["banco", "conta"],
-        version: "3.1",
+        version: "3.2",
         author: "Hinata",
         countDown: 5,
         role: 0,
@@ -171,6 +194,9 @@ module.exports = {
         const action = args[0]?.toLowerCase();
         const isOwner = OWNERS.includes(senderID);
 
+        // 🔥 GARANTE QUE O USUÁRIO EXISTE NO usersData
+        await ensureUserExists(userId, usersData);
+
         // 🔥 CALCULA JUROS (1% a cada 30min)
         calculateInterest(userId);
 
@@ -186,7 +212,6 @@ module.exports = {
                 const lines = jsonText.split('\n').length;
                 const size = (jsonText.length / 1024).toFixed(2);
 
-                // 🔥 ENVIA O JSON COMO TEXTO (DIVIDIDO SE FOR GRANDE)
                 if (jsonText.length < 2000) {
                     return api.sendMessage(
                         `📂 **BACKUP DO BANCO**\n\n` +
@@ -198,7 +223,6 @@ module.exports = {
                         messageID
                     );
                 } else {
-                    // 🔥 SE FOR GRANDE, DIVIDE EM PARTES
                     const parts = [];
                     const maxLength = 1800;
                     let currentPart = '';
@@ -378,6 +402,9 @@ module.exports = {
             if (targetId === userId) {
                 return api.sendMessage('❌ | Não pode transferir para si mesmo!', threadID, messageID);
             }
+
+            // 🔥 GARANTE QUE O DESTINATÁRIO EXISTE
+            await ensureUserExists(targetId, usersData);
             
             const password = args[3];
             if (!password) {
