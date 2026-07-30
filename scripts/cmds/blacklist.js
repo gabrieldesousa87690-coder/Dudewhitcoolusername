@@ -1,12 +1,14 @@
 const fs = require('fs-extra');
 const path = require('path');
 
-// 🔥 CAMINHO DO ARQUIVO DE DADOS
-const DATA_PATH = path.join(__dirname, 'cache', 'blacklist.json');
+// 🔥 CAMINHO DO ARQUIVO DE DADOS (AGORA EM TMP/)
+const DATA_PATH = path.join(__dirname, 'tmp', 'blacklist.json');
+
+// 🔥 GARANTE QUE A PASTA TMP EXISTE
+fs.ensureDirSync(path.dirname(DATA_PATH));
 
 // 🔥 GARANTE QUE O ARQUIVO EXISTE
 function ensureFile() {
-    fs.ensureDirSync(path.dirname(DATA_PATH));
     if (!fs.existsSync(DATA_PATH)) {
         fs.writeJSONSync(DATA_PATH, { users: [], threads: [] });
     }
@@ -74,22 +76,24 @@ function isBlacklisted(type, id) {
     return list.find(item => item.id === id) || null;
 }
 
+// 🔥 COMANDO PRINCIPAL
 module.exports = {
     config: {
         name: "blacklist",
         aliases: ["bl", "banlist", "blocklist"],
-        version: "1.1",
+        version: "2.0",
         author: "Hinata",
         countDown: 5,
         role: 2,
         description: {
-            pt: "Gerencia a blacklist de usuários e grupos"
+            pt: "Gerencia a blacklist de usuários e grupos (salva em tmp/)"
         },
         category: "admin",
         guide: {
             pt: "   {pn} add [user|thread] <id> <motivo> - Adiciona à blacklist\n" +
                  "   {pn} remove [user|thread] <id> - Remove da blacklist\n" +
                  "   {pn} list - Lista todos os banidos\n" +
+                 "   {pn} backup - Envia o JSON da blacklist (sem texto)\n" +
                  "   {pn} check [user|thread] <id> - Verifica se está banido"
         }
     },
@@ -98,18 +102,32 @@ module.exports = {
         const { threadID, messageID } = event;
         const action = args[0]?.toLowerCase();
 
+        // 🔥 COMANDO: BACKUP (ENVIA O JSON PURO)
+        if (action === 'backup') {
+            try {
+                const data = loadData();
+                const jsonText = JSON.stringify(data, null, 2);
+                
+                // 🔥 ENVIA APENAS O JSON, SEM TEXTO ADICIONAL
+                return api.sendMessage(jsonText, threadID, messageID);
+                
+            } catch (error) {
+                return api.sendMessage(`❌ | Erro ao gerar backup: ${error.message}`, threadID, messageID);
+            }
+        }
+
         // 🔥 SE NÃO TIVER AÇÃO
         if (!action) {
             return api.sendMessage(
                 `📋 **COMANDO BLACKLIST**\n\n` +
-                `🔹 ${api.getPrefix()}blacklist add user <id> <motivo> - Banir usuário\n` +
-                `🔹 ${api.getPrefix()}blacklist add thread <id> <motivo> - Banir grupo\n` +
-                `🔹 ${api.getPrefix()}blacklist remove user <id> - Desbanir usuário\n` +
-                `🔹 ${api.getPrefix()}blacklist remove thread <id> - Desbanir grupo\n` +
-                `🔹 ${api.getPrefix()}blacklist list - Listar banidos\n` +
-                `🔹 ${api.getPrefix()}blacklist check user <id> - Verificar usuário\n` +
-                `🔹 ${api.getPrefix()}blacklist check thread <id> - Verificar grupo\n\n` +
-                `⚠️ Apenas administradores do bot podem usar.`,
+                `🔹 blacklist add user <id> <motivo> - Banir usuário\n` +
+                `🔹 blacklist add thread <id> <motivo> - Banir grupo\n` +
+                `🔹 blacklist remove user <id> - Desbanir usuário\n` +
+                `🔹 blacklist remove thread <id> - Desbanir grupo\n` +
+                `🔹 blacklist list - Listar banidos\n` +
+                `🔹 blacklist backup - Envia o JSON puro\n` +
+                `🔹 blacklist check user <id> - Verificar usuário\n` +
+                `🔹 blacklist check thread <id> - Verificar grupo`,
                 threadID,
                 messageID
             );
@@ -130,8 +148,7 @@ module.exports = {
             }
 
             const result = addToBlacklist(type, id, reason);
-            api.sendMessage(result.message, threadID, messageID);
-            return;
+            return api.sendMessage(result.message, threadID, messageID);
         }
 
         // 🔥 COMANDO: REMOVE
@@ -148,8 +165,7 @@ module.exports = {
             }
 
             const result = removeFromBlacklist(type, id);
-            api.sendMessage(result.message, threadID, messageID);
-            return;
+            return api.sendMessage(result.message, threadID, messageID);
         }
 
         // 🔥 COMANDO: LIST
@@ -180,8 +196,7 @@ module.exports = {
                 });
             }
 
-            api.sendMessage(msg, threadID, messageID);
-            return;
+            return api.sendMessage(msg, threadID, messageID);
         }
 
         // 🔥 COMANDO: CHECK
@@ -199,7 +214,7 @@ module.exports = {
 
             const result = isBlacklisted(type, id);
             if (result) {
-                api.sendMessage(
+                return api.sendMessage(
                     `⚠️ **${type === 'user' ? 'Usuário' : 'Grupo'} ESTÁ NA BLACKLIST!**\n\n` +
                     `📌 ID: ${id}\n` +
                     `📝 Motivo: ${result.reason}\n` +
@@ -208,16 +223,15 @@ module.exports = {
                     messageID
                 );
             } else {
-                api.sendMessage(
+                return api.sendMessage(
                     `✅ **${type === 'user' ? 'Usuário' : 'Grupo'} NÃO ESTÁ NA BLACKLIST!**\n\n` +
                     `📌 ID: ${id}`,
                     threadID,
                     messageID
                 );
             }
-            return;
         }
 
-        api.sendMessage(`❌ | Ação inválida! Use: add, remove, list, check`, threadID, messageID);
+        return api.sendMessage(`❌ | Ação inválida! Use: add, remove, list, check, backup`, threadID, messageID);
     }
 };
