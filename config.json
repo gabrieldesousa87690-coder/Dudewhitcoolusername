@@ -1,6 +1,8 @@
 {
-   "author": ["MahMUD"],
-    "facebookAccount": {
+  "author": [
+    "MahMUD"
+  ],
+  "facebookAccount": {
     "email": "senjuxk@gmail.com",
     "password": "paodebatata",
     "2FASecret": "",
@@ -17,7 +19,7 @@
     "enable": false,
     "ignoreCommand": []
   },
-"adminBot": [
+  "adminBot": [
     "61590677925905"
   ],
   "whiteListMode": {

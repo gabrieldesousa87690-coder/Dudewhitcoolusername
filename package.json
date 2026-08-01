@@ -8,11 +8,13 @@
     "npm": ">=7.0.0"
   },
   "dependencies": {
+    "@distube/ytdl-core": "^4.13.3",
+    "@huggingface/transformers": "^3.0.0",
+    "@napi-rs/canvas": "^0.1.80",
+    "1secmail-api": "^1.1.1",
     "axios": "^1.12.2",
-    "mahmud-fca": "^1.0.10",
     "bcrypt": "^5.0.1",
     "canvas": "^3.2.0",
-    "@napi-rs/canvas": "^0.1.80",
     "chalk": "^4.1.2",
     "check-disk-space": "^3.4.0",
     "cheerio": "^1.0.0-rc.12",
@@ -20,6 +22,7 @@
     "colors": "^1.4.0",
     "connect-flash": "^0.1.1",
     "cookie-parser": "^1.4.6",
+    "crypto": "^1.0.1",
     "discord-image-generation": "^1.4.25",
     "diskusage-ng": "^1.0.4",
     "eta": "^1.12.3",
@@ -35,9 +38,11 @@
     "googleapis": "^100.0.0",
     "gradient-string": "^2.0.2",
     "graphql-query-to-json": "^2.0.1",
+    "https": "^1.0.0",
     "image-downloader": "^4.3.0",
     "jsonlint-mod": "^1.7.6",
     "jsqr": "^1.4.0",
+    "mahmud-fca": "^1.0.10",
     "moment-timezone": "^0.5.48",
     "mongoose": "^6.13.8",
     "mqtt": "^4.3.7",
@@ -68,10 +73,7 @@
     "totp-generator": "^0.0.13",
     "websocket-stream": "^5.5.2",
     "yt-search": "^2.12.1",
-    "ytdl-core": "^4.11.5",
-    "@distube/ytdl-core": "^4.13.3",
-    "1secmail-api": "^1.1.1",
-    "@huggingface/transformers": "^3.0.0"
+    "ytdl-core": "^4.11.5"
   },
   "scripts": {
     "start": "set NODE_ENV=&& node index.js",
