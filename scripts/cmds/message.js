@@ -324,7 +324,7 @@ async function generateChatCanvas(userId, userName, targetId, targetName, messag
         ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.font = 'bold 12px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(`📄 + ${remaining} mensagens (responda com "ver mais")`, width / 2, msgEndY - 12);
+        ctx.fillText(`📄 + ${remaining} mensagens`, width / 2, msgEndY - 12);
     }
 
     const inputY = height - 55;
@@ -374,7 +374,7 @@ module.exports = {
     config: {
         name: "messages",
         aliases: ["msg", "conversas", "mensagens"],
-        version: "2.0",
+        version: "2.1",
         author: "Tsuki",
         countDown: 5,
         role: 0,
@@ -413,6 +413,7 @@ module.exports = {
             messagesData[userId] = {};
         }
 
+        // 🔥 WALLPAPER
         if (action === 'wallpaper') {
             if (!attachments || attachments.length === 0) {
                 return api.sendMessage('❌ | Envie uma imagem e responda com: !messages wallpaper', threadID, messageID);
@@ -441,6 +442,7 @@ module.exports = {
             }
         }
 
+        // 🔥 TELA INICIAL
         const allConversations = messagesData[userId] || {};
         const conversationList = [];
 
@@ -466,7 +468,8 @@ module.exports = {
 
         try {
             const imagePath = await generateMessagesCanvas(userId, userName, conversationList);
-            
+
+            // 🔥 REGISTRA O onReply COM O messageID CORRETO
             global.GoatBot.onReply.set(messageID, {
                 commandName: "messages",
                 author: senderID,
@@ -476,8 +479,10 @@ module.exports = {
                 conversations: conversationList
             });
 
+            console.log(`✅ onReply registrado para ${messageID}`); // 🔥 LOG PARA DEBUG
+
             return api.sendMessage({
-                body: '📱 **Suas conversas**\n\nResponda esta mensagem com o número da conversa.',
+                body: '📱 **Suas conversas**\n\nResponda esta mensagem com o número da conversa.\nExemplo: 1',
                 attachment: fs.createReadStream(imagePath)
             }, threadID, () => {
                 if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
@@ -495,18 +500,25 @@ module.exports = {
         }
     },
 
+    // 🔥 ==================== ONREPLY ====================
     onReply: async function ({ api, event, Reply, usersData }) {
         const { senderID, threadID, body } = event;
         const userId = parseInt(senderID);
 
+        console.log(`📩 onReply chamado! Body: "${body}", Author: ${Reply.author}`); // 🔥 LOG PARA DEBUG
+
         if (!body || body.length === 0) return;
-        if (senderID !== Reply.author) return;
+        if (senderID !== Reply.author) {
+            console.log(`❌ Sender ${senderID} não é o autor ${Reply.author}`);
+            return;
+        }
 
         const messagesData = loadMessages();
         if (!messagesData[userId]) {
             messagesData[userId] = {};
         }
 
+        // 🔥 SELEÇÃO DE CONVERSA
         if (Reply.type === 'select_conversation') {
             const num = parseInt(body.replace(/[^0-9]/g, ''));
             if (!num || num < 1 || num > Reply.conversations.length) {
@@ -534,6 +546,7 @@ module.exports = {
                     wallpaperPath
                 );
 
+                // 🔥 REGISTRA O onReply PARA ENVIO DE MENSAGEM
                 global.GoatBot.onReply.set(imagePath, {
                     commandName: "messages",
                     author: senderID,
@@ -542,6 +555,8 @@ module.exports = {
                     targetId: targetId,
                     targetName: targetName
                 });
+
+                console.log(`✅ Conversa aberta com ${targetName}`);
 
                 return api.sendMessage({
                     body: `💬 **Conversa com ${targetName}**\n\nResponda esta mensagem com o texto que deseja enviar.`,
@@ -563,10 +578,12 @@ module.exports = {
             }
         }
 
+        // 🔥 ENVIO DE MENSAGEM
         if (Reply.type === 'send_message') {
             const targetId = Reply.targetId;
             const targetName = Reply.targetName;
 
+            // 🔥 "VER MAIS"
             if (body.toLowerCase() === 'ver mais' || body.toLowerCase() === 'mais') {
                 const conversation = messagesData[userId]?.[targetId] || [];
                 const wallpaperPath = messagesData[userId]?.settings?.wallpaper || null;
@@ -597,6 +614,7 @@ module.exports = {
                 return api.sendMessage('❌ | Digite uma mensagem!', threadID);
             }
 
+            // 🔥 INICIALIZA CONVERSA
             if (!messagesData[targetId]) {
                 messagesData[targetId] = {};
             }
