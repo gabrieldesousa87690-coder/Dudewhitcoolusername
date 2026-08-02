@@ -49,6 +49,26 @@ function getTime() {
     return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+// 🔥 FUNÇÃO DE WRAP TEXT
+function wrapText(ctx, text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = words[0] || '';
+
+    for (let i = 1; i < words.length; i++) {
+        const word = words[i];
+        const width = ctx.measureText(currentLine + ' ' + word).width;
+        if (width < maxWidth) {
+            currentLine += ' ' + word;
+        } else {
+            lines.push(currentLine);
+            currentLine = word;
+        }
+    }
+    lines.push(currentLine);
+    return lines;
+}
+
 // 🔥 GERA A TELA INICIAL DE MENSAGENS (LAYOUT CELULAR)
 async function generateMessagesCanvas(userId, userName, conversations, usersData) {
     const width = 450;
@@ -123,14 +143,15 @@ async function generateMessagesCanvas(userId, userName, conversations, usersData
     ctx.lineTo(width - 15, 55);
     ctx.stroke();
 
-    // 🔥 LISTA DE CONVERSAS
+    // 🔥 LISTA DE CONVERSAS (CARDS)
     const maxItems = 10;
     const items = conversations.slice(0, maxItems);
     const avatarSize = 50;
     const startY = 75;
     const itemHeight = 65;
 
-    items.forEach((conv, index) => {
+    for (let index = 0; index < items.length; index++) {
+        const conv = items[index];
         const y = startY + index * itemHeight;
         const name = conv.name || 'Usuário desconhecido';
         const lastMsg = conv.lastMessage || 'Nenhuma mensagem';
@@ -189,7 +210,7 @@ async function generateMessagesCanvas(userId, userName, conversations, usersData
             ctx.lineTo(width - 20, y + itemHeight - 1);
             ctx.stroke();
         }
-    });
+    }
 
     // 🔥 SE TIVER MAIS CONVERSAS
     if (conversations.length > maxItems) {
@@ -363,32 +384,12 @@ async function generateChatCanvas(userId, userName, targetId, targetName, messag
     return pathImg;
 }
 
-// 🔥 FUNÇÃO DE WRAP TEXT
-function wrapText(ctx, text, maxWidth) {
-    const words = text.split(' ');
-    const lines = [];
-    let currentLine = words[0] || '';
-
-    for (let i = 1; i < words.length; i++) {
-        const word = words[i];
-        const width = ctx.measureText(currentLine + ' ' + word).width;
-        if (width < maxWidth) {
-            currentLine += ' ' + word;
-        } else {
-            lines.push(currentLine);
-            currentLine = word;
-        }
-    }
-    lines.push(currentLine);
-    return lines;
-}
-
 // 🔥 COMANDO PRINCIPAL
 module.exports = {
     config: {
         name: "messages",
         aliases: ["msg", "conversas", "mensagens"],
-        version: "1.0",
+        version: "1.1",
         author: "Tsuki",
         countDown: 5,
         role: 0,
