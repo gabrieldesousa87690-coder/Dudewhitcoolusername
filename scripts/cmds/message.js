@@ -3,7 +3,6 @@ const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
 
-// 🔥 CAMINHOS
 const MESSAGES_PATH = path.join(__dirname, 'cache', 'messages_data.json');
 const WALLPAPERS_PATH = path.join(__dirname, 'cache', 'wallpapers');
 const CACHE_PATH = path.join(__dirname, 'cache');
@@ -374,7 +373,7 @@ module.exports = {
     config: {
         name: "messages",
         aliases: ["msg", "conversas", "mensagens"],
-        version: "2.1",
+        version: "2.2",
         author: "Tsuki",
         countDown: 5,
         role: 0,
@@ -384,7 +383,7 @@ module.exports = {
         category: "social",
         guide: {
             pt: "   {pn} - Tela inicial\n" +
-                 "   {pn} wallpaper - Define wallpaper (respondendo imagem)\n" +
+                 "   {pn} wallpaper - Define wallpaper\n" +
                  "   Responda a imagem com o número da conversa\n" +
                  "   Responda a conversa com o texto para enviar"
         }
@@ -413,10 +412,24 @@ module.exports = {
             messagesData[userId] = {};
         }
 
-        // 🔥 WALLPAPER
         if (action === 'wallpaper') {
             if (!attachments || attachments.length === 0) {
-                return api.sendMessage('❌ | Envie uma imagem e responda com: !messages wallpaper', threadID, messageID);
+                const replyMsg = await api.sendMessage(
+                    '📸 **Wallpaper**\n\n' +
+                    'Responda esta mensagem com a imagem que deseja usar como wallpaper.\n' +
+                    'A imagem será salva e usada como fundo das suas conversas.',
+                    threadID,
+                    messageID
+                );
+
+                global.GoatBot.onReply.set(replyMsg.messageID, {
+                    commandName: "messages",
+                    author: senderID,
+                    threadID: threadID,
+                    type: "set_wallpaper"
+                });
+
+                return;
             }
 
             const imageUrl = attachments[0].url;
@@ -442,7 +455,6 @@ module.exports = {
             }
         }
 
-        // 🔥 TELA INICIAL
         const allConversations = messagesData[userId] || {};
         const conversationList = [];
 
@@ -469,24 +481,25 @@ module.exports = {
         try {
             const imagePath = await generateMessagesCanvas(userId, userName, conversationList);
 
-            // 🔥 REGISTRA O onReply COM O messageID CORRETO
-            global.GoatBot.onReply.set(messageID, {
-                commandName: "messages",
-                author: senderID,
-                messageID: messageID,
-                threadID: threadID,
-                type: "select_conversation",
-                conversations: conversationList
-            });
-
-            console.log(`✅ onReply registrado para ${messageID}`); // 🔥 LOG PARA DEBUG
-
-            return api.sendMessage({
+            api.sendMessage({
                 body: '📱 **Suas conversas**\n\nResponda esta mensagem com o número da conversa.\nExemplo: 1',
                 attachment: fs.createReadStream(imagePath)
-            }, threadID, () => {
-                if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+            }, threadID, (err, info) => {
+                if (!err) {
+                    global.GoatBot.onReply.set(info.messageID, {
+                        commandName: "messages",
+                        author: senderID,
+                        messageID: info.messageID,
+                        threadID: threadID,
+                        type: "select_conversation",
+                        conversations: conversationList
+                    });
+                }
             }, messageID);
+
+            setTimeout(() => {
+                if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+            }, 5000);
 
         } catch (error) {
             console.error('Erro ao gerar mensagens:', error);
@@ -500,25 +513,46 @@ module.exports = {
         }
     },
 
-    // 🔥 ==================== ONREPLY ====================
     onReply: async function ({ api, event, Reply, usersData }) {
-        const { senderID, threadID, body } = event;
+        const { senderID, threadID, body, attachments } = event;
         const userId = parseInt(senderID);
 
-        console.log(`📩 onReply chamado! Body: "${body}", Author: ${Reply.author}`); // 🔥 LOG PARA DEBUG
-
         if (!body || body.length === 0) return;
-        if (senderID !== Reply.author) {
-            console.log(`❌ Sender ${senderID} não é o autor ${Reply.author}`);
-            return;
-        }
+        if (senderID !== Reply.author) return;
 
         const messagesData = loadMessages();
         if (!messagesData[userId]) {
             messagesData[userId] = {};
         }
 
-        // 🔥 SELEÇÃO DE CONVERSA
+        if (Reply.type === 'set_wallpaper') {
+            if (!attachments || attachments.length === 0) {
+                return api.sendMessage('❌ | Envie uma imagem!', threadID);
+            }
+
+            const imageUrl = attachments[0].url;
+            if (!imageUrl) {
+                return api.sendMessage('❌ | URL da imagem não encontrada!', threadID);
+            }
+
+            try {
+                const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+                const imageBuffer = Buffer.from(response.data, 'utf-8');
+                const wallpaperPath = path.join(WALLPAPERS_PATH, `${userId}.jpg`);
+                fs.writeFileSync(wallpaperPath, imageBuffer);
+
+                if (!messagesData[userId].settings) {
+                    messagesData[userId].settings = {};
+                }
+                messagesData[userId].settings.wallpaper = wallpaperPath;
+                saveMessages(messagesData);
+
+                return api.sendMessage('✅ **Wallpaper definido com sucesso!**', threadID);
+            } catch (error) {
+                return api.sendMessage(`❌ | Erro ao definir wallpaper: ${error.message}`, threadID);
+            }
+        }
+
         if (Reply.type === 'select_conversation') {
             const num = parseInt(body.replace(/[^0-9]/g, ''));
             if (!num || num < 1 || num > Reply.conversations.length) {
@@ -546,24 +580,25 @@ module.exports = {
                     wallpaperPath
                 );
 
-                // 🔥 REGISTRA O onReply PARA ENVIO DE MENSAGEM
-                global.GoatBot.onReply.set(imagePath, {
-                    commandName: "messages",
-                    author: senderID,
-                    threadID: threadID,
-                    type: "send_message",
-                    targetId: targetId,
-                    targetName: targetName
-                });
-
-                console.log(`✅ Conversa aberta com ${targetName}`);
-
-                return api.sendMessage({
+                api.sendMessage({
                     body: `💬 **Conversa com ${targetName}**\n\nResponda esta mensagem com o texto que deseja enviar.`,
                     attachment: fs.createReadStream(imagePath)
-                }, threadID, () => {
-                    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+                }, threadID, (err, info) => {
+                    if (!err) {
+                        global.GoatBot.onReply.set(info.messageID, {
+                            commandName: "messages",
+                            author: senderID,
+                            threadID: threadID,
+                            type: "send_message",
+                            targetId: targetId,
+                            targetName: targetName
+                        });
+                    }
                 });
+
+                setTimeout(() => {
+                    if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
+                }, 5000);
 
             } catch (error) {
                 console.error('Erro ao abrir conversa:', error);
@@ -578,12 +613,10 @@ module.exports = {
             }
         }
 
-        // 🔥 ENVIO DE MENSAGEM
         if (Reply.type === 'send_message') {
             const targetId = Reply.targetId;
             const targetName = Reply.targetName;
 
-            // 🔥 "VER MAIS"
             if (body.toLowerCase() === 'ver mais' || body.toLowerCase() === 'mais') {
                 const conversation = messagesData[userId]?.[targetId] || [];
                 const wallpaperPath = messagesData[userId]?.settings?.wallpaper || null;
@@ -599,22 +632,25 @@ module.exports = {
                         wallpaperPath
                     );
 
-                    return api.sendMessage({
-                        body: `💬 **Conversa com ${targetName}** (mais mensagens)\n\nResponda para enviar.`,
+                    api.sendMessage({
+                        body: `💬 **Conversa com ${targetName}** (mais mensagens)`,
                         attachment: fs.createReadStream(imagePath)
-                    }, threadID, () => {
+                    }, threadID);
+
+                    setTimeout(() => {
                         if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-                    });
+                    }, 5000);
+
                 } catch (error) {
                     return api.sendMessage(`❌ | Erro: ${error.message}`, threadID);
                 }
+                return;
             }
 
             if (!body || body.length < 1) {
                 return api.sendMessage('❌ | Digite uma mensagem!', threadID);
             }
 
-            // 🔥 INICIALIZA CONVERSA
             if (!messagesData[targetId]) {
                 messagesData[targetId] = {};
             }
@@ -660,12 +696,14 @@ module.exports = {
                     wallpaperPath
                 );
 
-                return api.sendMessage({
+                api.sendMessage({
                     body: `✅ **Mensagem enviada!**\n📤 Para: ${targetName}\n💬 ${body}\n🕒 ${timeStr}`,
                     attachment: fs.createReadStream(imagePath)
-                }, threadID, () => {
+                }, threadID);
+
+                setTimeout(() => {
                     if (fs.existsSync(imagePath)) fs.unlinkSync(imagePath);
-                });
+                }, 5000);
 
             } catch (error) {
                 console.error('Erro ao atualizar conversa:', error);
