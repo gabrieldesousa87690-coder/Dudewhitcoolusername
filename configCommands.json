@@ -40,6 +40,8 @@
     }
   },
   "commandUnload": [
-    "horny.js"
+    "horny.js",
+    "hack.js",
+    "aniqz.js"
   ]
 }
