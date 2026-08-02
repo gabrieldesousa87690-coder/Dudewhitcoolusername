@@ -1,0 +1,106 @@
+{
+  "61592210534464": {
+    "61592477818076": [
+      {
+        "senderID": 61592210534464,
+        "senderName": "Tsuki Chan",
+        "content": "Teste Teste 123",
+        "time": "21:27",
+        "date": "02/08/2026",
+        "timestamp": 1785706065250
+      },
+      {
+        "senderID": 61592477818076,
+        "senderName": "Violet",
+        "content": "quié",
+        "time": "21:28",
+        "date": "02/08/2026",
+        "timestamp": 1785706136180
+      },
+      {
+        "senderID": 61592210534464,
+        "senderName": "Tsuki Chan",
+        "content": "manda gore, aqui Mark não vê",
+        "time": "21:29",
+        "date": "02/08/2026",
+        "timestamp": 1785706179225
+      },
+      {
+        "senderID": 61592477818076,
+        "senderName": "Violet",
+        "content": "como manda foto por aqui",
+        "time": "21:30",
+        "date": "02/08/2026",
+        "timestamp": 1785706228989
+      },
+      {
+        "senderID": 61592210534464,
+        "senderName": "Tsuki Chan",
+        "content": "não sei..",
+        "time": "21:31",
+        "date": "02/08/2026",
+        "timestamp": 1785706291626
+      },
+      {
+        "senderID": 61592477818076,
+        "senderName": "Violet",
+        "content": "não tem como enviar, tá desatualizado",
+        "time": "21:31",
+        "date": "02/08/2026",
+        "timestamp": 1785706317251
+      }
+    ]
+  },
+  "61592477818076": {
+    "61592210534464": [
+      {
+        "senderID": 61592210534464,
+        "senderName": "Tsuki Chan",
+        "content": "Teste Teste 123",
+        "time": "21:27",
+        "date": "02/08/2026",
+        "timestamp": 1785706065250
+      },
+      {
+        "senderID": 61592477818076,
+        "senderName": "Violet",
+        "content": "quié",
+        "time": "21:28",
+        "date": "02/08/2026",
+        "timestamp": 1785706136180
+      },
+      {
+        "senderID": 61592210534464,
+        "senderName": "Tsuki Chan",
+        "content": "manda gore, aqui Mark não vê",
+        "time": "21:29",
+        "date": "02/08/2026",
+        "timestamp": 1785706179225
+      },
+      {
+        "senderID": 61592477818076,
+        "senderName": "Violet",
+        "content": "como manda foto por aqui",
+        "time": "21:30",
+        "date": "02/08/2026",
+        "timestamp": 1785706228989
+      },
+      {
+        "senderID": 61592210534464,
+        "senderName": "Tsuki Chan",
+        "content": "não sei..",
+        "time": "21:31",
+        "date": "02/08/2026",
+        "timestamp": 1785706291626
+      },
+      {
+        "senderID": 61592477818076,
+        "senderName": "Violet",
+        "content": "não tem como enviar, tá desatualizado",
+        "time": "21:31",
+        "date": "02/08/2026",
+        "timestamp": 1785706317251
+      }
+    ]
+  }
+}
