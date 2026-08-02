@@ -5,66 +5,43 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  schedule:
-    - cron: '0 */6 * * *'  # 🔥 A CADA 6 HORAS
   workflow_dispatch:  # 🔥 PERMITE RODAR MANUALMENTE
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    
     timeout-minutes: 360  # 🔥 6 HORAS
 
-    strategy:
-      matrix:
-        node-version: [20.x]
-
     steps:
-    - name: 📥 Checkout do código
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         fetch-depth: 0
 
-    - name: ⚙️ Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
+    - uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
+        node-version: '20.x'
 
-    - name: 📦 Instalar dependências
-      run: npm install
+    - run: npm install
 
-    - name: 🤖 Rodar o bot
-      run: npm start
-      env:
-        NODE_ENV: production
+    - run: npm start
 
-    # 🔥 SALVAR DADOS
-    - name: 💾 Salvar dados no repositório
+    # 🔥 SALVA TUDO
+    - name: Salvar dados
       if: always()
       run: |
         git config user.name "github-actions[bot]"
         git config user.email "github-actions[bot]@users.noreply.github.com"
         
-        echo "📂 Verificando arquivos de dados..."
-        ls -la data/ 2>/dev/null || echo "⚠️ Pasta data não existe"
-        
-        git add data/*.json 2>/dev/null || true
-        git add *.json 2>/dev/null || true
-        git add *data*.json 2>/dev/null || true
+        # 🔥 ADICIONA TODOS OS JSONS
+        find . -name "*.json" -not -path "./node_modules/*" -not -path "./.git/*" | while read file; do
+          git add "$file" 2>/dev/null || true
+        done
         
         if git diff --staged --quiet; then
-          echo "📝 Nenhuma mudança para commitar"
+          echo "📝 Sem mudanças"
         else
-          echo "🔄 Commitando mudanças..."
-          git commit -m "🔄 Atualiza dados do bot [skip ci]"
+          git commit -m "🔄 Atualiza dados [skip ci]"
           git push
-          echo "✅ Dados salvos com sucesso!"
+          echo "✅ Dados salvos!"
         fi
-        
-        echo "📊 Status final:"
-        git status
