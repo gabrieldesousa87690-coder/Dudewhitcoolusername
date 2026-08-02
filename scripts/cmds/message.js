@@ -3,6 +3,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
 
+// 🔥 CAMINHOS
 const MESSAGES_PATH = path.join(__dirname, 'cache', 'messages_data.json');
 const WALLPAPERS_PATH = path.join(__dirname, 'cache', 'wallpapers');
 const CACHE_PATH = path.join(__dirname, 'cache');
@@ -373,7 +374,7 @@ module.exports = {
     config: {
         name: "messages",
         aliases: ["msg", "conversas", "mensagens"],
-        version: "2.2",
+        version: "2.3",
         author: "Tsuki",
         countDown: 5,
         role: 0,
@@ -383,7 +384,8 @@ module.exports = {
         category: "social",
         guide: {
             pt: "   {pn} - Tela inicial\n" +
-                 "   {pn} wallpaper - Define wallpaper\n" +
+                 "   {pn} wallpaper <url> - Define wallpaper por URL\n" +
+                 "   {pn} add <Uid> - Adiciona contato\n" +
                  "   Responda a imagem com o número da conversa\n" +
                  "   Responda a conversa com o texto para enviar"
         }
@@ -412,33 +414,20 @@ module.exports = {
             messagesData[userId] = {};
         }
 
+        // 🔥 WALLPAPER VIA URL
         if (action === 'wallpaper') {
-            if (!attachments || attachments.length === 0) {
-                const replyMsg = await api.sendMessage(
-                    '📸 **Wallpaper**\n\n' +
-                    'Responda esta mensagem com a imagem que deseja usar como wallpaper.\n' +
-                    'A imagem será salva e usada como fundo das suas conversas.',
+            const url = args[1];
+            if (!url) {
+                return api.sendMessage(
+                    '❌ | Use: !messages wallpaper <url>\n' +
+                    'Exemplo: !messages wallpaper https://i.imgur.com/imagem.jpg',
                     threadID,
                     messageID
                 );
-
-                global.GoatBot.onReply.set(replyMsg.messageID, {
-                    commandName: "messages",
-                    author: senderID,
-                    threadID: threadID,
-                    type: "set_wallpaper"
-                });
-
-                return;
-            }
-
-            const imageUrl = attachments[0].url;
-            if (!imageUrl) {
-                return api.sendMessage('❌ | URL da imagem não encontrada!', threadID, messageID);
             }
 
             try {
-                const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
+                const response = await axios.get(url, { responseType: 'arraybuffer' });
                 const imageBuffer = Buffer.from(response.data, 'utf-8');
                 const wallpaperPath = path.join(WALLPAPERS_PATH, `${userId}.jpg`);
                 fs.writeFileSync(wallpaperPath, imageBuffer);
@@ -455,6 +444,69 @@ module.exports = {
             }
         }
 
+        // 🔥 ADICIONAR CONTATO
+        if (action === 'add') {
+            const targetId = parseInt(args[1]);
+            if (!targetId || isNaN(targetId)) {
+                return api.sendMessage('❌ | Use: !messages add <Uid>', threadID, messageID);
+            }
+
+            if (targetId === userId) {
+                return api.sendMessage('❌ | Não pode adicionar a si mesmo!', threadID, messageID);
+            }
+
+            let targetData = await usersData.get(targetId);
+            if (!targetData) {
+                await usersData.set(targetId, {
+                    money: 0,
+                    exp: 0,
+                    name: `User_${targetId}`,
+                    data: {}
+                });
+                targetData = await usersData.get(targetId);
+            }
+
+            const targetName = targetData.name || `User_${targetId}`;
+
+            // 🔥 INICIALIZA CONVERSA
+            if (!messagesData[targetId]) {
+                messagesData[targetId] = {};
+            }
+            if (!messagesData[targetId][userId]) {
+                messagesData[targetId][userId] = [];
+            }
+            if (!messagesData[userId][targetId]) {
+                messagesData[userId][targetId] = [];
+            }
+
+            // 🔥 ADICIONA MENSAGEM DE SISTEMA
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString('pt-BR');
+
+            const systemMsg = {
+                senderID: 'system',
+                senderName: 'Sistema',
+                content: `📌 ${userName} adicionou ${targetName} aos contatos`,
+                time: timeStr,
+                date: dateStr,
+                timestamp: now.getTime()
+            };
+
+            messagesData[userId][targetId].push(systemMsg);
+            messagesData[targetId][userId].push(systemMsg);
+            saveMessages(messagesData);
+
+            return api.sendMessage(
+                `✅ **Contato adicionado!**\n\n` +
+                `👤 ${targetName} (${targetId})\n` +
+                `💬 Agora vocês podem trocar mensagens.`,
+                threadID,
+                messageID
+            );
+        }
+
+        // 🔥 TELA INICIAL
         const allConversations = messagesData[userId] || {};
         const conversationList = [];
 
@@ -475,7 +527,13 @@ module.exports = {
         conversationList.sort((a, b) => (b.lastTime || '').localeCompare(a.lastTime || ''));
 
         if (conversationList.length === 0) {
-            return api.sendMessage('📭 | Nenhuma conversa ainda.\n💡 Envie uma mensagem com: !messages sent <Uid> <mensagem>', threadID, messageID);
+            return api.sendMessage(
+                '📭 | Nenhuma conversa ainda.\n\n' +
+                '💡 Adicione um contato: !messages add <Uid>\n' +
+                '💡 Envie uma mensagem: !messages sent <Uid> <mensagem>',
+                threadID,
+                messageID
+            );
         }
 
         try {
@@ -523,34 +581,6 @@ module.exports = {
         const messagesData = loadMessages();
         if (!messagesData[userId]) {
             messagesData[userId] = {};
-        }
-
-        if (Reply.type === 'set_wallpaper') {
-            if (!attachments || attachments.length === 0) {
-                return api.sendMessage('❌ | Envie uma imagem!', threadID);
-            }
-
-            const imageUrl = attachments[0].url;
-            if (!imageUrl) {
-                return api.sendMessage('❌ | URL da imagem não encontrada!', threadID);
-            }
-
-            try {
-                const response = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-                const imageBuffer = Buffer.from(response.data, 'utf-8');
-                const wallpaperPath = path.join(WALLPAPERS_PATH, `${userId}.jpg`);
-                fs.writeFileSync(wallpaperPath, imageBuffer);
-
-                if (!messagesData[userId].settings) {
-                    messagesData[userId].settings = {};
-                }
-                messagesData[userId].settings.wallpaper = wallpaperPath;
-                saveMessages(messagesData);
-
-                return api.sendMessage('✅ **Wallpaper definido com sucesso!**', threadID);
-            } catch (error) {
-                return api.sendMessage(`❌ | Erro ao definir wallpaper: ${error.message}`, threadID);
-            }
         }
 
         if (Reply.type === 'select_conversation') {
