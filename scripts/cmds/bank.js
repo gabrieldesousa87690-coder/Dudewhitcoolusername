@@ -4,7 +4,6 @@ const crypto = require('crypto');
 
 // 🔥 CAMINHOS
 const BANK_PATH = path.join(__dirname, 'tmp', 'bank_data.json');
-const USERS_PATH = path.join(__dirname, '..', '..', 'database', 'data', 'usersData.json');
 const TMP_PATH = path.join(__dirname, 'tmp');
 
 // 🔥 GARANTE QUE A PASTA TMP EXISTE
@@ -28,7 +27,6 @@ function loadBank() {
 function saveBank(data) {
     try {
         fs.writeJSONSync(BANK_PATH, data, { spaces: 2 });
-        syncUsersData(data);
         return true;
     } catch (e) {
         console.error('Erro ao salvar bank_data.json:', e.message);
@@ -36,25 +34,10 @@ function saveBank(data) {
     }
 }
 
-function loadUsers() {
-    try {
-        if (fs.existsSync(USERS_PATH)) {
-            return fs.readJSONSync(USERS_PATH);
-        }
-    } catch (e) {}
-    return [];
-}
-
-function saveUsers(users) {
-    try {
-        fs.writeJSONSync(USERS_PATH, users, { spaces: 2 });
-    } catch (e) {}
-}
-
-// 🔥 FUNÇÃO PARA GARANTIR QUE O USUÁRIO EXISTE NO usersData
+// 🔥 FUNÇÃO PARA GARANTIR QUE O USUÁRIO EXISTE (IGUAL AO BALANCE)
 async function ensureUserExists(userID, usersData) {
     try {
-        const user = await usersData.get(userID);
+        let user = await usersData.get(userID);
         if (!user) {
             await usersData.set(userID, {
                 money: 0,
@@ -62,36 +45,12 @@ async function ensureUserExists(userID, usersData) {
                 name: `User_${userID}`,
                 data: {}
             });
+            user = await usersData.get(userID);
         }
-        return true;
+        return user;
     } catch (e) {
         console.error('Erro ao criar usuário:', e.message);
-        return false;
-    }
-}
-
-function syncUsersData(bankData) {
-    try {
-        const bank = bankData || loadBank();
-        const users = loadUsers();
-        
-        for (const [userID, account] of Object.entries(bank)) {
-            const userIndex = users.findIndex(u => u.userID == userID);
-            if (userIndex !== -1) {
-                if (!users[userIndex].data) users[userIndex].data = {};
-                users[userIndex].data.bank = {
-                    phone: account.phone,
-                    balance: account.balance,
-                    debt: account.debt,
-                    debtDate: account.debtDate,
-                    createdAt: account.createdAt
-                };
-            }
-        }
-        
-        saveUsers(users);
-    } catch (e) {
-        console.error('Erro ao sincronizar usersData:', e.message);
+        return null;
     }
 }
 
@@ -99,7 +58,7 @@ function getOrCreateAccount(userID) {
     const bank = loadBank();
     if (!bank[userID]) {
         bank[userID] = {
-            phone: generatePhone(),
+            phone: userID.toString(), // 🔥 USA O UID COMO TELEFONE
             password: null,
             balance: 0,
             debt: 0,
@@ -112,14 +71,6 @@ function getOrCreateAccount(userID) {
         saveBank(bank);
     }
     return bank[userID];
-}
-
-function generatePhone() {
-    let phone = '9';
-    for (let i = 0; i < 8; i++) {
-        phone += Math.floor(Math.random() * 10);
-    }
-    return phone;
 }
 
 function addHistory(userID, type, amount, description) {
@@ -167,8 +118,8 @@ module.exports = {
     config: {
         name: "bank",
         aliases: ["banco", "conta"],
-        version: "3.2",
-        author: "Hinata",
+        version: "3.3",
+        author: "Tsuki",
         countDown: 5,
         role: 0,
         description: {
@@ -194,22 +145,24 @@ module.exports = {
         const action = args[0]?.toLowerCase();
         const isOwner = OWNERS.includes(senderID);
 
-        // 🔥 GARANTE QUE O USUÁRIO EXISTE NO usersData
-        await ensureUserExists(userId, usersData);
+        // 🔥 GARANTE QUE O USUÁRIO EXISTE (IGUAL AO BALANCE)
+        const user = await ensureUserExists(userId, usersData);
+        if (!user) {
+            return api.sendMessage('❌ | Erro ao criar usuário!', threadID, messageID);
+        }
 
-        // 🔥 CALCULA JUROS (1% a cada 30min)
+        // 🔥 CALCULA JUROS
         calculateInterest(userId);
 
         const account = getOrCreateAccount(userId);
-        const userData = await usersData.get(userId);
-        const name = userData?.name || `User_${userId}`;
+        const userData = user;
+        const name = userData.name || `User_${userId}`;
 
         // 🔥 COMANDO: BACKUP (ENVIA JSON EM TEXTO)
         if (action === 'backup' && isOwner) {
             try {
                 const bank = loadBank();
                 const jsonText = JSON.stringify(bank, null, 2);
-                const lines = jsonText.split('\n').length;
                 const size = (jsonText.length / 1024).toFixed(2);
 
                 if (jsonText.length < 2000) {
@@ -270,7 +223,6 @@ module.exports = {
             const hashed = crypto.createHash('sha256').update(password).digest('hex');
             account.password = hashed;
             saveBank(loadBank());
-            syncUsersData();
             
             return api.sendMessage('🔐 | Senha definida com sucesso!', threadID, messageID);
         }
@@ -286,7 +238,7 @@ module.exports = {
                 return api.sendMessage(`❌ | Você já tem uma dívida de ${account.debt.toLocaleString()}$!`, threadID, messageID);
             }
             
-            const maxLoan = (userData?.money || 0) * 2;
+            const maxLoan = (userData.money || 0) * 2;
             if (amount > maxLoan) {
                 return api.sendMessage(`❌ | Empréstimo máximo: ${maxLoan.toLocaleString()}$ (2x seu saldo)`, threadID, messageID);
             }
@@ -297,7 +249,6 @@ module.exports = {
             account.balance += amount;
             addHistory(userId, 'loan', amount, 'Empréstimo recebido');
             saveBank(loadBank());
-            syncUsersData();
             
             return api.sendMessage(
                 `✅ **EMPRÉSTIMO APROVADO!**\n\n` +
@@ -317,7 +268,7 @@ module.exports = {
                 return api.sendMessage('❌ | Valor inválido! Use: !bank depositar 1000', threadID, messageID);
             }
             
-            const money = userData?.money || 0;
+            const money = userData.money || 0;
             if (amount > money) {
                 return api.sendMessage(`❌ | Você só tem ${money.toLocaleString()}$ na carteira!`, threadID, messageID);
             }
@@ -326,7 +277,6 @@ module.exports = {
             account.balance += amount;
             addHistory(userId, 'deposit', amount, 'Depósito na conta');
             saveBank(loadBank());
-            syncUsersData();
             
             return api.sendMessage(
                 `✅ **DEPÓSITO REALIZADO!**\n\n` +
@@ -363,11 +313,10 @@ module.exports = {
             }
             
             account.balance -= amount;
-            const currentMoney = userData?.money || 0;
+            const currentMoney = userData.money || 0;
             await usersData.set(userId, { money: currentMoney + amount });
             addHistory(userId, 'withdraw', amount, 'Saque da conta');
             saveBank(loadBank());
-            syncUsersData();
             
             return api.sendMessage(
                 `✅ **SAQUE REALIZADO!**\n\n` +
@@ -403,8 +352,11 @@ module.exports = {
                 return api.sendMessage('❌ | Não pode transferir para si mesmo!', threadID, messageID);
             }
 
-            // 🔥 GARANTE QUE O DESTINATÁRIO EXISTE
-            await ensureUserExists(targetId, usersData);
+            // 🔥 GARANTE QUE O DESTINATÁRIO EXISTE (IGUAL AO BALANCE)
+            const targetUser = await ensureUserExists(targetId, usersData);
+            if (!targetUser) {
+                return api.sendMessage('❌ | Erro ao criar usuário destinatário!', threadID, messageID);
+            }
             
             const password = args[3];
             if (!password) {
@@ -426,7 +378,6 @@ module.exports = {
             addHistory(userId, 'transfer_out', amount, `Transferência para ${targetName}`);
             addHistory(targetId, 'transfer_in', amount, `Transferência de ${name}`);
             saveBank(loadBank());
-            syncUsersData();
             
             return api.sendMessage(
                 `✅ **TRANSFERÊNCIA REALIZADA!**\n\n` +
@@ -461,7 +412,6 @@ module.exports = {
             account.balance -= amount;
             addHistory(userId, 'bill', amount, `Pagamento de conta ${billType}`);
             saveBank(loadBank());
-            syncUsersData();
             
             return api.sendMessage(
                 `✅ **CONTA PAGA!**\n\n` +
@@ -496,7 +446,7 @@ module.exports = {
 
         // 🔥 VERIFICA DÍVIDA E COBRA SE POSSÍVEL
         if (account.debt > 0) {
-            const totalMoney = account.balance + (userData?.money || 0);
+            const totalMoney = account.balance + (userData.money || 0);
             const doubleDebt = account.debt * 2;
             
             if (totalMoney >= doubleDebt) {
@@ -508,14 +458,13 @@ module.exports = {
                 } else {
                     const remaining = totalDebt - account.balance;
                     account.balance = 0;
-                    await usersData.set(userId, { money: Math.max(0, (userData?.money || 0) - remaining) });
+                    await usersData.set(userId, { money: Math.max(0, (userData.money || 0) - remaining) });
                 }
                 
                 addHistory(userId, 'debt_paid', totalDebt, 'Dívida cobrada pelo banco');
                 account.debt = 0;
                 account.debtDate = null;
                 saveBank(loadBank());
-                syncUsersData();
                 
                 return api.sendMessage(
                     `💸 **DÍVIDA COBRADA!**\n\n` +
@@ -529,7 +478,7 @@ module.exports = {
         }
 
         // 🔥 VER CONTA (DEFAULT)
-        const total = account.balance + (userData?.money || 0);
+        const total = account.balance + (userData.money || 0);
         const debtStatus = account.debt > 0 ? 
             `⚠️ Dívida: ${account.debt.toLocaleString()}$ (1% a cada 30min)` : 
             '✅ Sem dívidas';
@@ -538,7 +487,7 @@ module.exports = {
             `🏦 **${name}**\n\n` +
             `📞 Telefone: ${account.phone}\n` +
             `💰 Saldo: ${account.balance.toLocaleString()}$\n` +
-            `💵 Carteira: ${(userData?.money || 0).toLocaleString()}$\n` +
+            `💵 Carteira: ${(userData.money || 0).toLocaleString()}$\n` +
             `💎 Total: ${total.toLocaleString()}$\n` +
             `📊 ${debtStatus}\n` +
             `📅 Criado: ${account.createdAt}`,
