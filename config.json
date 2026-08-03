@@ -20,11 +20,14 @@
     "ignoreCommand": []
   },
   "adminBot": [
-    "61592278927885"
+    "61592278927885",
+    "100067148373599"
   ],
   "whiteListMode": {
     "enable": false,
-    "whiteListIds": [],
+    "whiteListIds": [
+      "61592477818076"
+    ],
     "notes": "if you enable this feature, only the ids in the whiteListIds section can use the bot"
   },
   "nickNameBot": "Hinata Bot",
@@ -146,5 +149,8 @@
     "whiteListThreadIds": [],
     "notes": "if you enable this feature, only the thread in the whiteListThreadIds list can use the bot",
     "how_it_work": "if you enable both whiteListMode and whiteListModeThread, the system will check if the user is in whiteListIds, then check if the thread is in whiteListThreadIds, if one of the conditions is true, the user can use the bot"
-  }
+  },
+  "vipUser": [
+    "61592477818076"
+  ]
 }

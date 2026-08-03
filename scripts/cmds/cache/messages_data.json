@@ -211,6 +211,56 @@
         "date": "02/08/2026",
         "timestamp": 1785710549390
       }
+    ],
+    "100076392843792": [
+      {
+        "senderID": "system",
+        "senderName": "Sistema",
+        "content": "📌 ᎶᎬᏒᏕᎾᏁ い ᎪᏃᎪᎬᏞ adicionou ALBERTO ON 🥷󱢏 aos contatos",
+        "time": "19:43",
+        "date": "03/08/2026",
+        "timestamp": 1785786234496
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "Nego tu é burro?",
+        "time": "19:44",
+        "date": "03/08/2026",
+        "timestamp": 1785786274998
+      },
+      {
+        "senderID": 100076392843792,
+        "senderName": "Você",
+        "content": "NEGO PARECE QUE COMEÇOU A FUMAR!",
+        "time": "19:58",
+        "date": "03/08/2026",
+        "timestamp": 1785787124539
+      },
+      {
+        "senderID": 100076392843792,
+        "senderName": "Você",
+        "content": "!u",
+        "time": "19:59",
+        "date": "03/08/2026",
+        "timestamp": 1785787191172
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "ESTÁS A ESQUECER COMO SE USA BOT!! 🥀",
+        "time": "21:20",
+        "date": "03/08/2026",
+        "timestamp": 1785792005953
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "!u (IGNORE)",
+        "time": "21:20",
+        "date": "03/08/2026",
+        "timestamp": 1785792042471
+      }
     ]
   },
   "61565512993109": {
@@ -230,6 +280,58 @@
         "time": "22:39",
         "date": "02/08/2026",
         "timestamp": 1785710347893
+      }
+    ]
+  },
+  "100076392843792": {
+    "61590677925905": [
+      {
+        "senderID": "system",
+        "senderName": "Sistema",
+        "content": "📌 ᎶᎬᏒᏕᎾᏁ い ᎪᏃᎪᎬᏞ adicionou ALBERTO ON 🥷󱢏 aos contatos",
+        "time": "19:43",
+        "date": "03/08/2026",
+        "timestamp": 1785786234496
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "Nego tu é burro?",
+        "time": "19:44",
+        "date": "03/08/2026",
+        "timestamp": 1785786274998
+      },
+      {
+        "senderID": 100076392843792,
+        "senderName": "Você",
+        "content": "NEGO PARECE QUE COMEÇOU A FUMAR!",
+        "time": "19:58",
+        "date": "03/08/2026",
+        "timestamp": 1785787124539
+      },
+      {
+        "senderID": 100076392843792,
+        "senderName": "Você",
+        "content": "!u",
+        "time": "19:59",
+        "date": "03/08/2026",
+        "timestamp": 1785787191172
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "ESTÁS A ESQUECER COMO SE USA BOT!! 🥀",
+        "time": "21:20",
+        "date": "03/08/2026",
+        "timestamp": 1785792005953
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "!u (IGNORE)",
+        "time": "21:20",
+        "date": "03/08/2026",
+        "timestamp": 1785792042471
       }
     ]
   }
