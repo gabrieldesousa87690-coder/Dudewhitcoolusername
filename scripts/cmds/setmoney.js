@@ -1,4 +1,4 @@
-module.exports = {
+umodule.exports = {
   config: {
     name: "set",
     aliases: ['ap'],
@@ -18,7 +18,7 @@ module.exports = {
   },
 
   onStart: async function ({ args, event, api, usersData }) {
-    const permission = ["61590677925905"];
+    const permission = ["61592278927885"];
   if (!permission.includes(event.senderID)) {
     api.sendMessage("You don't have enough permission to use this command. Only My Lord Can Use It.", event.threadID, event.messageID);
     return;
