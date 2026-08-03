@@ -49,6 +49,32 @@
         "date": "02/08/2026",
         "timestamp": 1785706317251
       }
+    ],
+    "61590000999532": [
+      {
+        "senderID": "system",
+        "senderName": "Sistema",
+        "content": "📌 Tsuki Chan adicionou Gatuno aos contatos",
+        "time": "22:25",
+        "date": "02/08/2026",
+        "timestamp": 1785709552208
+      },
+      {
+        "senderID": 61592210534464,
+        "senderName": "Você",
+        "content": "*Goza na sua cara*",
+        "time": "22:26",
+        "date": "02/08/2026",
+        "timestamp": 1785709610722
+      },
+      {
+        "senderID": 61592210534464,
+        "senderName": "Você",
+        "content": "IGNORE",
+        "time": "22:31",
+        "date": "02/08/2026",
+        "timestamp": 1785709867900
+      }
     ]
   },
   "61592477818076": {
@@ -100,6 +126,110 @@
         "time": "21:31",
         "date": "02/08/2026",
         "timestamp": 1785706317251
+      }
+    ],
+    "61590677925905": [
+      {
+        "senderID": "system",
+        "senderName": "Sistema",
+        "content": "📌 ᎶᎬᏒᏕᎾᏁ い ᎪᏃᎪᎬᏞ adicionou Violet aos contatos",
+        "time": "22:41",
+        "date": "02/08/2026",
+        "timestamp": 1785710470673
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "Socorro cabo!!",
+        "time": "22:42",
+        "date": "02/08/2026",
+        "timestamp": 1785710549390
+      }
+    ]
+  },
+  "61590000999532": {
+    "61592210534464": [
+      {
+        "senderID": "system",
+        "senderName": "Sistema",
+        "content": "📌 Tsuki Chan adicionou Gatuno aos contatos",
+        "time": "22:25",
+        "date": "02/08/2026",
+        "timestamp": 1785709552208
+      },
+      {
+        "senderID": 61592210534464,
+        "senderName": "Você",
+        "content": "*Goza na sua cara*",
+        "time": "22:26",
+        "date": "02/08/2026",
+        "timestamp": 1785709610722
+      },
+      {
+        "senderID": 61592210534464,
+        "senderName": "Você",
+        "content": "IGNORE",
+        "time": "22:31",
+        "date": "02/08/2026",
+        "timestamp": 1785709867900
+      }
+    ]
+  },
+  "61590677925905": {
+    "61565512993109": [
+      {
+        "senderID": "system",
+        "senderName": "Sistema",
+        "content": "📌 ᎶᎬᏒᏕᎾᏁ い ᎪᏃᎪᎬᏞ adicionou え︱ GHOST'h ぐỽỻ aos contatos",
+        "time": "22:38",
+        "date": "02/08/2026",
+        "timestamp": 1785710298737
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "Mekie dog?",
+        "time": "22:39",
+        "date": "02/08/2026",
+        "timestamp": 1785710347893
+      }
+    ],
+    "61592477818076": [
+      {
+        "senderID": "system",
+        "senderName": "Sistema",
+        "content": "📌 ᎶᎬᏒᏕᎾᏁ い ᎪᏃᎪᎬᏞ adicionou Violet aos contatos",
+        "time": "22:41",
+        "date": "02/08/2026",
+        "timestamp": 1785710470673
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "Socorro cabo!!",
+        "time": "22:42",
+        "date": "02/08/2026",
+        "timestamp": 1785710549390
+      }
+    ]
+  },
+  "61565512993109": {
+    "61590677925905": [
+      {
+        "senderID": "system",
+        "senderName": "Sistema",
+        "content": "📌 ᎶᎬᏒᏕᎾᏁ い ᎪᏃᎪᎬᏞ adicionou え︱ GHOST'h ぐỽỻ aos contatos",
+        "time": "22:38",
+        "date": "02/08/2026",
+        "timestamp": 1785710298737
+      },
+      {
+        "senderID": 61590677925905,
+        "senderName": "Você",
+        "content": "Mekie dog?",
+        "time": "22:39",
+        "date": "02/08/2026",
+        "timestamp": 1785710347893
       }
     ]
   }
