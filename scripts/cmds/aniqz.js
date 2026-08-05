@@ -77,7 +77,7 @@ module.exports = {
     config: {
         name: "animequiz",
         aliases: ["aq", "quizanime"],
-        version: "9.0",
+        version: "7.0",
         author: "Hinata",
         countDown: 10,
         role: 0,
@@ -87,7 +87,6 @@ module.exports = {
         category: "game",
         guide: {
             pt: "   {pn}: Inicia um quiz\n" +
-                "   {pn} cancel: Cancela o quiz atual\n" +
                 "   {pn} ranking: Mostra o ranking do grupo\n" +
                 "   {pn} top: Top 10 global"
         }
@@ -96,33 +95,6 @@ module.exports = {
     onStart: async function ({ api, event, args, usersData }) {
         const { threadID, senderID, messageID } = event;
         const action = args[0]?.toLowerCase();
-
-        // 🔥 CANCELAR QUIZ
-        if (action === 'cancel') {
-            if (!quizState[threadID] || !quizState[threadID].active) {
-                return api.sendMessage('📊 | Nenhum quiz ativo neste grupo!', threadID, messageID);
-            }
-
-            const quiz = quizState[threadID];
-            quiz.active = false;
-
-            if (quiz.timeout) {
-                clearTimeout(quiz.timeout);
-                quiz.timeout = null;
-            }
-
-            const allUsers = await usersData.getAll();
-            for (const user of allUsers) {
-                if (user.data?.quizPoints) {
-                    await usersData.set(user.userID, {
-                        "data.quizPoints": 0
-                    });
-                }
-            }
-
-            delete quizState[threadID];
-            return api.sendMessage('✅ | Quiz cancelado! Todos os pontos foram resetados.', threadID, messageID);
-        }
 
         if (action === 'ranking' || action === 'rank') {
             return await showGroupRanking(api, event, usersData);
@@ -143,9 +115,14 @@ module.exports = {
         const { threadID, senderID, body } = event;
         const quiz = quizState[threadID];
 
+        // 🔥 VERIFICA SE O QUIZ ESTÁ ATIVO
         if (!quiz || !quiz.active) return;
         if (!body || body.length < 2) return;
+
+        // 🔥 VERIFICA SE É O AUTOR DA PERGUNTA (quem respondeu a mensagem do bot)
         if (senderID !== Reply.author) return;
+
+        // 🔥 VERIFICA SE O USUÁRIO JÁ RESPONDEU
         if (quiz.answers.some(a => a.senderID === senderID)) {
             return api.sendMessage('⏳ | Você já respondeu esta pergunta!', threadID);
         }
@@ -260,27 +237,28 @@ async function startQuiz(api, event, usersData) {
             console.log(`⚠️ Imagem não encontrada para: ${characterName}`);
         }
 
+        // 🔥 INSTRUÇÃO MAIS CLARA
         const question = `📺 QUIZ DE ANIME\n\n` +
             `🔍 Quem é esse personagem?\n` +
             `📖 Anime: ${animeName}\n\n` +
-            `⏳ Responda clicando em "Responder" e digitando o nome!\n` +
-            `⏱️ Você tem 10 segundos!\n\n` +
+            `⏳ Você tem 10 segundos!\n` +
+            `💡 Clique em "Responder" e digite o nome do personagem!\n\n` +
             `🏆 Quem atingir ${WINNER_POINTS.toLocaleString()} pontos primeiro ganha!\n\n` +
             `📊 Prêmios finais:\n` +
             `🥇 1º: 30.000$\n` +
             `🥈 2º: 15.000$\n` +
-            `🥉 3º: 7.500$\n\n` +
-            `❌ Para cancelar, use !aq cancel`;
+            `🥉 3º: 7.500$`;
 
         const sentMessage = await api.sendMessage(question, threadID, messageID);
 
         if (imageAttachment) {
             await api.sendMessage({
-                body: `🖼️`,
+                body: `🖼️ Imagem do personagem`,
                 attachment: imageAttachment
             }, threadID);
         }
 
+        // 🔥 REGISTRA O onReply
         global.GoatBot.onReply.set(sentMessage.messageID, {
             commandName: "animequiz",
             author: senderID,
