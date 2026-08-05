@@ -3,8 +3,11 @@ const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
 
-// 🔥 SEU BANNER
+// 🔥 BANNER (SUBSTITUA PELO SEU)
 const BANNER_URL = 'https://i.postimg.cc/TY4PDVhQ/c0da903acee71e9dbf72a4189030c2aa.jpg';
+
+// 🔥 CAMINHO DO JSON (MESMO QUE O BOT USA)
+const USERS_PATH = path.join(__dirname, '..', '..', 'database', 'data', 'usersData.json');
 
 // 🔥 MAPEAMENTO DE CARACTERES
 const normalizeText = (text) => {
@@ -45,12 +48,51 @@ const getLevel = (money) => {
     return { name: '🚀 Modo Deus', color: '#FF0066' };
 };
 
+// 🔥 ==================== FUNÇÕES DIRETAS NO JSON ====================
+function loadUsers() {
+    try {
+        if (fs.existsSync(USERS_PATH)) {
+            return fs.readJSONSync(USERS_PATH);
+        }
+    } catch (e) {
+        console.error('Erro ao carregar usersData.json:', e.message);
+    }
+    return [];
+}
+
+function saveUsers(users) {
+    try {
+        fs.writeJSONSync(USERS_PATH, users, { spaces: 2 });
+        return true;
+    } catch (e) {
+        console.error('Erro ao salvar usersData.json:', e.message);
+        return false;
+    }
+}
+
+function getUser(userID) {
+    const users = loadUsers();
+    return users.find(u => u.userID == userID);
+}
+
+function setUser(userID, data) {
+    let users = loadUsers();
+    const index = users.findIndex(u => u.userID == userID);
+    if (index === -1) {
+        users.push({ userID, ...data });
+    } else {
+        users[index] = { ...users[index], ...data };
+    }
+    saveUsers(users);
+    return users.find(u => u.userID == userID);
+}
+
 module.exports = {
     config: {
         name: "balance",
         aliases: ["bal", "money", "carteira", "saldo"],
-        version: "5.2",
-        author: "Hinata",
+        version: "6.0",
+        author: "Tsuki",
         countDown: 5,
         role: 0,
         description: {
@@ -62,7 +104,7 @@ module.exports = {
         }
     },
 
-    onStart: async function ({ api, event, args, usersData }) {
+    onStart: async function ({ api, event, args }) {
         try {
             const { senderID, mentions, threadID, messageID } = event;
             let targetId = parseInt(senderID);
@@ -73,16 +115,15 @@ module.exports = {
                 targetName = mentions[targetId].replace(/@/g, '').trim();
             }
 
-            // CRIA USUÁRIO
-            let userData = await usersData.get(targetId);
+            // 🔥 BUSCA OU CRIA O USUÁRIO DIRETO NO JSON
+            let userData = getUser(targetId);
             if (!userData) {
-                await usersData.set(targetId, {
+                userData = setUser(targetId, {
                     money: 0,
                     exp: 0,
                     name: targetName || `User_${targetId}`,
                     data: {}
                 });
-                userData = await usersData.get(targetId);
             }
 
             const originalName = targetName || userData.name || `User_${targetId}`;
@@ -91,8 +132,8 @@ module.exports = {
             const exp = userData.exp || 0;
             const level = getLevel(money);
 
-            // RANK
-            const allUsers = await usersData.getAll();
+            // 🔥 RANK (ORDENA POR DINHEIRO)
+            const allUsers = loadUsers();
             const sorted = allUsers
                 .filter(u => (u.money || 0) > 0)
                 .sort((a, b) => (b.money || 0) - (a.money || 0));
@@ -116,13 +157,12 @@ module.exports = {
                 rankColor = '#808080';
             }
 
-            const avatarUrl = await usersData.getAvatarUrl(targetId);
+            const avatarUrl = `https://graph.facebook.com/${targetId}/picture?width=500&height=500`;
             const pathImg = path.join(__dirname, 'cache', 'balance_' + targetId + '.png');
 
             await generateBannerWithBackground(
                 pathImg,
                 normalName,
-                originalName,
                 money,
                 exp,
                 level,
@@ -154,7 +194,7 @@ module.exports = {
 };
 
 // 🔥 FUNÇÃO QUE GERA O BALANCE COM BANNER DE FUNDO
-async function generateBannerWithBackground(pathImg, normalName, originalName, money, exp, level, rankText, rankColor, avatarUrl, totalPlayers) {
+async function generateBannerWithBackground(pathImg, normalName, money, exp, level, rankText, rankColor, avatarUrl, totalPlayers) {
     const width = 1000;
     const height = 400;
     const canvas = Canvas.createCanvas(width, height);
@@ -168,10 +208,7 @@ async function generateBannerWithBackground(pathImg, normalName, originalName, m
         fs.writeFileSync(bannerPath, bannerBuffer);
         
         const banner = await Canvas.loadImage(bannerPath);
-        
-        // 🔥 REDIMENSIONA O BANNER PARA 1000x400
         ctx.drawImage(banner, 0, 0, width, height);
-        
         fs.unlinkSync(bannerPath);
     } catch (e) {
         console.log('❌ Erro ao baixar banner, usando fundo padrão');
@@ -181,42 +218,19 @@ async function generateBannerWithBackground(pathImg, normalName, originalName, m
         gradient.addColorStop(1, '#0a1628');
         ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, width, height);
-
-        ctx.shadowColor = '#FF1493';
-        ctx.shadowBlur = 30;
-        ctx.strokeStyle = '#FF1493';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(15, 15, width - 30, height - 30);
-        ctx.shadowBlur = 0;
-
-        for (let i = 0; i < 50; i++) {
-            ctx.fillStyle = 'rgba(255, 20, 147, ' + (Math.random() * 0.1) + ')';
-            ctx.beginPath();
-            ctx.arc(Math.random() * width, Math.random() * height, Math.random() * 2 + 0.5, 0, Math.PI * 2);
-            ctx.fill();
-        }
     }
 
-    // 🔥 2. SEMI-TRANSPARENTE PARA LEGIBILIDADE
+    // 🔥 2. SEMI-TRANSPARENTE
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     roundRect(ctx, 30, 30, width - 60, height - 60, 15);
     ctx.fill();
 
-    // 🔥 3. DESENHA AS INFORMAÇÕES POR CIMA
-
-    // Sombra geral nos textos
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 15;
-
-    // AVATAR
+    // 🔥 3. AVATAR
     try {
         const avatar = await Canvas.loadImage(avatarUrl);
         const avatarSize = 130;
         const avatarX = 60;
         const avatarY = (height - avatarSize) / 2;
-
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-        ctx.shadowBlur = 30;
 
         ctx.save();
         ctx.beginPath();
@@ -225,8 +239,6 @@ async function generateBannerWithBackground(pathImg, normalName, originalName, m
         ctx.clip();
         ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
         ctx.restore();
-
-        ctx.shadowBlur = 0;
 
         ctx.strokeStyle = '#FF1493';
         ctx.lineWidth = 4;
@@ -254,7 +266,7 @@ async function generateBannerWithBackground(pathImg, normalName, originalName, m
         ctx.fillText('👤', avatarX + avatarSize / 2, avatarY + avatarSize / 2 + 20);
     }
 
-    // INFORMAÇÕES
+    // 🔥 4. INFORMAÇÕES
     const infoX = 260;
     let currentY = 50;
 
@@ -293,7 +305,6 @@ async function generateBannerWithBackground(pathImg, normalName, originalName, m
     // DINHEIRO
     const formattedMoney = formatMoney(money);
     const moneyColor = money >= 10000 ? '#FFD700' : '#00ff88';
-    
     ctx.fillStyle = moneyColor;
     ctx.font = 'bold 48px Arial';
     ctx.textAlign = 'left';
@@ -336,15 +347,14 @@ async function generateBannerWithBackground(pathImg, normalName, originalName, m
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.font = '11px Arial';
     ctx.textAlign = 'right';
-    ctx.fillText('✦ Hinata Bot ✦', width - 20, height - 12);
+    ctx.fillText('✦ Tsuki Bot ✦', width - 20, height - 12);
     ctx.shadowBlur = 0;
 
-    // SALVA A IMAGEM
+    // SALVA
     const imageBuffer = canvas.toBuffer('image/png');
     fs.writeFileSync(pathImg, imageBuffer);
 }
 
-// 🔥 ROUND RECT
 function roundRect(ctx, x, y, w, h, r) {
     if (w < 2 * r) r = w / 2;
     if (h < 2 * r) r = h / 2;
