@@ -5,19 +5,21 @@ const os = require('os');
 
 module.exports = {
     config: {
-        name: "startup",
-        event: "onStart",
-        version: "1.3",
+        name: "startup", // Nome do evento
+        version: "1.0",
         author: "Tsuki",
-        description: {
-            pt: "Envia mensagem de boas-vindas com Canvas quando o bot inicia"
-        },
-        category: "events"
+        category: "events" // 🔥 CATEGORIA CORRETA (plural)
     },
 
-    onStart: async function ({ api, threadsData, getPrefix }) {
+    langs: {
+        pt: {
+            online: "🌸 **Tsuki Bot ESTÁ ONLINE!** 🌸\n\n⏱️ Uptime: %1h %2m\n💾 RAM: %3GB / %4GB\n📅 Data: %5\n\n💡 Use %6help para ver os comandos.\n🌙 Tsuki Bot • Sempre ativo para você!"
+        }
+    },
+
+    onStart: async function ({ api, getLang, getPrefix }) {
         try {
-            console.log('🌸 Iniciando mensagem de startup com Canvas...');
+            console.log('🌸 Evento startup iniciado...');
 
             // 🔥 GERA O BANNER
             const imagePath = await generateStartupBanner();
@@ -36,24 +38,20 @@ module.exports = {
                     return;
                 }
 
-                // 🔥 INFORMAÇÕES DO BOT
+                // 🔥 INFORMAÇÕES
                 const botInfo = await api.getUserInfo(api.getCurrentUserID());
-                const botName = botInfo[api.getCurrentUserID()]?.name || 'Hinata Bot';
-                const prefix = getPrefix ? getPrefix() : '!'; // 🔥 PEGA O PREFIXO
+                const botName = botInfo[api.getCurrentUserID()]?.name || 'Tsuki Bot';
+                const prefix = getPrefix ? getPrefix() : '!';
 
                 const uptime = process.uptime();
                 const hours = Math.floor(uptime / 3600);
                 const minutes = Math.floor((uptime % 3600) / 60);
                 const totalRAM = (os.totalmem() / 1024 / 1024 / 1024).toFixed(2);
                 const usedRAM = ((os.totalmem() - os.freemem()) / 1024 / 1024 / 1024).toFixed(2);
+                const date = new Date().toLocaleString();
 
-                const msg =
-                    `🌸 **${botName} ESTÁ ONLINE!** 🌸\n\n` +
-                    `⏱️ Uptime: ${hours}h ${minutes}m\n` +
-                    `💾 RAM: ${usedRAM}GB / ${totalRAM}GB\n` +
-                    `📅 Data: ${new Date().toLocaleString()}\n\n` +
-                    `💡 Use ${prefix}help para ver os comandos.\n` +
-                    `🌙 Tsuki Bot • Sempre ativo para você!`;
+                // 🔥 MONTA A MENSAGEM
+                const msg = getLang("online", hours, minutes, usedRAM, totalRAM, date, prefix);
 
                 let enviados = 0;
                 let erros = 0;
