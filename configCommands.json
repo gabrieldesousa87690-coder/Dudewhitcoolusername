@@ -42,7 +42,6 @@
   "commandUnload": [
     "horny.js",
     "hack.js",
-    "aniqz.js",
-    "pinterest.js"
+    "aniqz.js"
   ]
 }
