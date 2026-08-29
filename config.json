@@ -22,7 +22,8 @@
   "adminBot": [
     "100067148373599",
     "61590677925905",
-    "61592210534464"
+    "61592210534464",
+    "100076392843792"
   ],
   "whiteListMode": {
     "enable": false,
@@ -146,7 +147,7 @@
     "notes": "Document here: https://github.com/ntkhang03/fb-chat-api/blob/master/DOCS.md#apisetoptionsoptions "
   },
   "whiteListModeThread": {
-    "enable": true,
+    "enable": false,
     "whiteListThreadIds": [],
     "notes": "if you enable this feature, only the thread in the whiteListThreadIds list can use the bot",
     "how_it_work": "if you enable both whiteListMode and whiteListModeThread, the system will check if the user is in whiteListIds, then check if the thread is in whiteListThreadIds, if one of the conditions is true, the user can use the bot"
