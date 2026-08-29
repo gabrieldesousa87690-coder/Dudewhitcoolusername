@@ -32,7 +32,7 @@
   "nickNameBot": "Hinata Bot",
   "prefix": "!",
   "database": {
-    "type": "sqlite",
+    "type": "json",
     "uriMongodb": "",
     "autoSyncWhenStart": false,
     "autoRefreshThreadInfoFirstTime": true,
