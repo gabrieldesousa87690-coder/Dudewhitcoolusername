@@ -3,13 +3,10 @@ const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
 
-// 🔥 BANNER (SUBSTITUA PELO SEU)
+// 🔥 BANNER
 const BANNER_URL = 'https://i.postimg.cc/TY4PDVhQ/c0da903acee71e9dbf72a4189030c2aa.jpg';
 
-// 🔥 CAMINHO DO JSON (MESMO QUE O BOT USA)
-const USERS_PATH = path.join(__dirname, '..', '..', 'database', 'data', 'usersData.json');
-
-// 🔥 MAPEAMENTO DE CARACTERES
+// 🔥 MAPEAMENTO DE CARACTERES ESPECIAIS
 const normalizeText = (text) => {
     if (!text) return 'User';
     const map = {
@@ -28,8 +25,7 @@ const normalizeText = (text) => {
 
 // 🔥 FORMATAR DINHEIRO
 const formatMoney = (num) => {
-    if (!num) return '0$';
-    const n = parseInt(num);
+    const n = parseInt(num) || 0;
     if (n < 1000) return n + '$';
     if (n < 1000000) return (n / 1000).toFixed(1) + 'K$';
     if (n < 1000000000) return (n / 1000000).toFixed(1) + 'M$';
@@ -48,92 +44,91 @@ const getLevel = (money) => {
     return { name: '🚀 Modo Deus', color: '#FF0066' };
 };
 
-// 🔥 ==================== FUNÇÕES DIRETAS NO JSON ====================
-function loadUsers() {
+// 🔥 UTIL: garante que o usuário existe no banco
+async function ensureUser(usersData, userID, fallbackName = null) {
+    let userData = await usersData.get(userID);
+    if (!userData) {
+        await usersData.create(userID, {
+            name: fallbackName || `User_${userID}`,
+            money: 0,
+            exp: 0,
+            data: {}
+        });
+        userData = await usersData.get(userID);
+    }
+    return userData;
+}
+
+// 🔥 UTIL: nome do usuário (prioriza name do banco, fallback mention)
+async function getUserName(usersData, userID, fallbackName = null) {
     try {
-        if (fs.existsSync(USERS_PATH)) {
-            return fs.readJSONSync(USERS_PATH);
-        }
-    } catch (e) {
-        console.error('Erro ao carregar usersData.json:', e.message);
-    }
-    return [];
-}
-
-function saveUsers(users) {
-    try {
-        fs.writeJSONSync(USERS_PATH, users, { spaces: 2 });
-        return true;
-    } catch (e) {
-        console.error('Erro ao salvar usersData.json:', e.message);
-        return false;
-    }
-}
-
-function getUser(userID) {
-    const users = loadUsers();
-    return users.find(u => u.userID == userID);
-}
-
-function setUser(userID, data) {
-    let users = loadUsers();
-    const index = users.findIndex(u => u.userID == userID);
-    if (index === -1) {
-        users.push({ userID, ...data });
-    } else {
-        users[index] = { ...users[index], ...data };
-    }
-    saveUsers(users);
-    return users.find(u => u.userID == userID);
+        const userData = await usersData.get(userID);
+        if (userData?.name) return userData.name;
+    } catch (e) {}
+    return fallbackName || `User_${userID}`;
 }
 
 module.exports = {
     config: {
         name: "balance",
         aliases: ["bal", "money", "carteira", "saldo"],
-        version: "6.0",
+        version: "7.0",
         author: "Tsuki",
         countDown: 5,
         role: 0,
         description: {
-            pt: "Veja seu saldo com banner"
+            pt: "Veja seu saldo com banner / transfira dinheiro"
         },
         category: "economy",
         guide: {
-            pt: "   {pn}: Ver seu saldo\n   {pn} @tag: Ver saldo de alguém"
+            pt: "   {pn}: Ver seu saldo\n" +
+                "   {pn} @tag: Ver saldo de alguém\n" +
+                "   {pn} t <valor>: Transfere dinheiro\n" +
+                "   {pn} t <valor> (respondendo alguém): Transfere\n" +
+                "   Ex: {pn} t 100"
         }
     },
 
-    onStart: async function ({ api, event, args }) {
+    onStart: async function ({ api, event, args, usersData }) {
         try {
-            const { senderID, mentions, threadID, messageID } = event;
-            let targetId = parseInt(senderID);
-            let targetName = "";
+            const { senderID, mentions, threadID, messageID, messageReply } = event;
 
-            if (Object.keys(mentions).length > 0) {
-                targetId = parseInt(Object.keys(mentions)[0]);
-                targetName = mentions[targetId].replace(/@/g, '').trim();
+            // ============================================
+            // 🔥 SUBCOMANDO: TRANSFERIR (t / transfer / pay)
+            // ============================================
+            const sub = (args[0] || '').toLowerCase();
+            if (['t', 'transfer', 'pay', 'pagar', 'transferir'].includes(sub)) {
+                return await handleTransfer({ api, event, args, usersData, senderID, threadID, messageID, messageReply, mentions });
             }
 
-            // 🔥 BUSCA OU CRIA O USUÁRIO DIRETO NO JSON
-            let userData = getUser(targetId);
-            if (!userData) {
-                userData = setUser(targetId, {
-                    money: 0,
-                    exp: 0,
-                    name: targetName || `User_${targetId}`,
-                    data: {}
-                });
+            // ============================================
+            // 🔥 COMANDO PRINCIPAL: MOSTRAR SALDO
+            // ============================================
+            let targetId = senderID.toString();
+            let targetName = null;
+
+            // Se respondeu alguém, pega o autor da mensagem respondida
+            if (messageReply && messageReply.senderID) {
+                targetId = messageReply.senderID.toString();
+            }
+            // Se mencionou alguém
+            else if (mentions && Object.keys(mentions).length > 0) {
+                const firstKey = Object.keys(mentions)[0];
+                targetId = firstKey.toString();
+                targetName = mentions[firstKey].replace(/@/g, '').trim();
             }
 
-            const originalName = targetName || userData.name || `User_${targetId}`;
+            // 🔥 Busca usuário pelo banco do bot (usersData)
+            const userData = await ensureUser(usersData, targetId, targetName);
+
+            const originalName = userData.name || targetName || `User_${targetId}`;
             const normalName = normalizeText(originalName);
             const money = userData.money || 0;
             const exp = userData.exp || 0;
             const level = getLevel(money);
 
-            // 🔥 RANK (ORDENA POR DINHEIRO)
-            const allUsers = loadUsers();
+            // 🔥 RANK (busca todos do banco)
+            const allUsers = await usersData.getAll();
             const sorted = allUsers
                 .filter(u => (u.money || 0) > 0)
                 .sort((a, b) => (b.money || 0) - (a.money || 0));
@@ -143,7 +138,10 @@ module.exports = {
 
             let rankText = '';
             let rankColor = '#4CAF50';
-            if (rank <= 10) {
+            if (rank === 0) {
+                rankText = '📈 Sem rank';
+                rankColor = '#808080';
+            } else if (rank <= 10) {
                 rankText = '🏆 Top ' + rank;
                 rankColor = '#FFD700';
             } else if (rank <= 50) {
@@ -157,28 +155,28 @@ module.exports = {
                 rankColor = '#808080';
             }
 
-            const avatarUrl = `https://graph.facebook.com/${targetId}/picture?width=500&height=500`;
-            const pathImg = path.join(__dirname, 'cache', 'balance_' + targetId + '.png');
+            const avatarUrl = `https://graph.facebook.com/${targetId}/picture?width=500&height=500&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`;
+            const cacheDir = path.join(__dirname, 'cache');
+            if (!fs.existsSync(cacheDir)) fs.ensureDirSync(cacheDir);
+            const pathImg = path.join(cacheDir, 'balance_' + targetId + '_' + Date.now() + '.png');
 
             await generateBannerWithBackground(
-                pathImg,
-                normalName,
-                money,
-                exp,
-                level,
-                rankText,
-                rankColor,
-                avatarUrl,
-                totalPlayers
+                pathImg, normalName, money, exp, level,
+                rankText, rankColor, avatarUrl, totalPlayers
             );
+
+            // 🔥 Limpa o arquivo APÓS o envio concluir
+            const stream = fs.createReadStream(pathImg);
+            stream.on('close', () => {
+                try { if (fs.existsSync(pathImg)) fs.unlinkSync(pathImg); } catch (e) {}
+            });
 
             return api.sendMessage(
                 {
                     body: '💰 ' + originalName,
-                    attachment: fs.createReadStream(pathImg)
+                    attachment: stream
                 },
                 threadID,
-                () => { if (fs.existsSync(pathImg)) fs.unlinkSync(pathImg); },
                 messageID
             );
 
@@ -193,23 +191,121 @@ module.exports = {
     }
 };
 
-// 🔥 FUNÇÃO QUE GERA O BALANCE COM BANNER DE FUNDO
+// ============================================================
+// 🔥 FUNÇÃO: TRANSFERIR DINHEIRO
+// ============================================================
+async function handleTransfer({ api, event, args, usersData, senderID, threadID, messageID, messageReply, mentions }) {
+    try {
+        // 🔥 Pega o valor (aceita "100", "1k", "1.5k", "1m")
+        let rawValue = (args[1] || '').toString().toLowerCase().replace(/\s/g, '');
+        if (!rawValue) {
+            return api.sendMessage(
+                '❌ | Uso correto:\n' +
+                '   !bal t <valor>\n' +
+                '   !bal t 100 (respondendo alguém)\n' +
+                '   !bal t 100 @usuario\n\n' +
+                '💡 Aceita: 100, 1k, 1.5k, 1m, 1b',
+                threadID, messageID
+            );
+        }
+
+        // Converte sufixos
+        let multiplier = 1;
+        if (rawValue.endsWith('k')) { multiplier = 1000; rawValue = rawValue.slice(0, -1); }
+        else if (rawValue.endsWith('m')) { multiplier = 1000000; rawValue = rawValue.slice(0, -1); }
+        else if (rawValue.endsWith('b')) { multiplier = 1000000000; rawValue = rawValue.slice(0, -1); }
+
+        const amount = Math.floor(parseFloat(rawValue.replace(',', '.')) * multiplier);
+
+        if (!amount || isNaN(amount) || amount <= 0) {
+            return api.sendMessage('❌ | Valor inválido! Use um número positivo.', threadID, messageID);
+        }
+
+        // 🔥 Identifica destinatário (reply > mention)
+        let targetId = null;
+        let targetName = null;
+
+        if (messageReply && messageReply.senderID) {
+            targetId = messageReply.senderID.toString();
+            targetName = await getUserName(usersData, targetId);
+        } else if (mentions && Object.keys(mentions).length > 0) {
+            const firstKey = Object.keys(mentions)[0];
+            targetId = firstKey.toString();
+            targetName = mentions[firstKey].replace(/@/g, '').trim();
+        }
+
+        if (!targetId) {
+            return api.sendMessage(
+                '❌ | Você precisa:\n' +
+                '   • Responder a mensagem de alguém, OU\n' +
+                '   • Mencionar @alguém\n\n' +
+                '💡 Ex: !bal t 100 (respondendo alguém)',
+                threadID, messageID
+            );
+        }
+
+        if (targetId === senderID.toString()) {
+            return api.sendMessage('❌ | Você não pode transferir para si mesmo!', threadID, messageID);
+        }
+
+        // 🔥 Garante que ambos existem
+        const senderData = await ensureUser(usersData, senderID);
+        const targetData = await ensureUser(usersData, targetId, targetName);
+
+        const senderMoney = senderData.money || 0;
+        const targetMoney = targetData.money || 0;
+
+        if (senderMoney < amount) {
+            return api.sendMessage(
+                `❌ | Saldo insuficiente!\n` +
+                `💰 Você tem: ${formatMoney(senderMoney)}\n` +
+                `📤 Precisa: ${formatMoney(amount)}\n` +
+                `📉 Falta: ${formatMoney(amount - senderMoney)}`,
+                threadID, messageID
+            );
+        }
+
+        // 🔥 Executa a transferência
+        const newSenderMoney = senderMoney - amount;
+        const newTargetMoney = targetMoney + amount;
+
+        await usersData.set(senderID, { money: newSenderMoney });
+        await usersData.set(targetId, { money: newTargetMoney });
+
+        const senderName = senderData.name || `User_${senderID}`;
+        const finalTargetName = targetData.name || targetName || `User_${targetId}`;
+
+        return api.sendMessage(
+            `✅ | Transferência concluída!\n\n` +
+            `📤 De: ${senderName}\n` +
+            `📥 Para: ${finalTargetName}\n` +
+            `💵 Valor: ${formatMoney(amount)}\n\n` +
+            `💰 Seu novo saldo: ${formatMoney(newSenderMoney)}`,
+            threadID,
+            messageID
+        );
+
+    } catch (error) {
+        console.error('Erro no transfer:', error);
+        return api.sendMessage('❌ | ERRO: ' + error.message, threadID, messageID);
+    }
+}
+
+// ============================================================
+// 🔥 GERA O BANNER
+// ============================================================
 async function generateBannerWithBackground(pathImg, normalName, money, exp, level, rankText, rankColor, avatarUrl, totalPlayers) {
     const width = 1000;
     const height = 400;
     const canvas = Canvas.createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
-    // 🔥 1. BAIXA O BANNER
+    // 🔥 1. BANNER DE FUNDO
     try {
-        const response = await axios.get(BANNER_URL, { responseType: 'arraybuffer' });
-        const bannerBuffer = Buffer.from(response.data, 'utf-8');
-        const bannerPath = path.join(__dirname, 'cache', 'banner_temp.png');
-        fs.writeFileSync(bannerPath, bannerBuffer);
-        
-        const banner = await Canvas.loadImage(bannerPath);
+        const response = await axios.get(BANNER_URL, { responseType: 'arraybuffer', timeout: 15000 });
+        const bannerBuffer = Buffer.from(response.data);
+        const banner = await Canvas.loadImage(bannerBuffer);
         ctx.drawImage(banner, 0, 0, width, height);
-        fs.unlinkSync(bannerPath);
     } catch (e) {
         console.log('❌ Erro ao baixar banner, usando fundo padrão');
         const gradient = ctx.createLinearGradient(0, 0, width, height);
@@ -220,18 +316,18 @@ async function generateBannerWithBackground(pathImg, normalName, money, exp, lev
         ctx.fillRect(0, 0, width, height);
     }
 
-    // 🔥 2. SEMI-TRANSPARENTE
+    // 🔥 2. OVERLAY SEMI-TRANSPARENTE
     ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
     roundRect(ctx, 30, 30, width - 60, height - 60, 15);
     ctx.fill();
 
     // 🔥 3. AVATAR
+    const avatarSize = 130;
+    const avatarX = 60;
+    const avatarY = (height - avatarSize) / 2;
+
     try {
         const avatar = await Canvas.loadImage(avatarUrl);
-        const avatarSize = 130;
-        const avatarX = 60;
-        const avatarY = (height - avatarSize) / 2;
-
         ctx.save();
         ctx.beginPath();
         ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
@@ -248,11 +344,7 @@ async function generateBannerWithBackground(pathImg, normalName, money, exp, lev
         ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 2, 0, Math.PI * 2);
         ctx.stroke();
         ctx.shadowBlur = 0;
-
     } catch (e) {
-        const avatarSize = 130;
-        const avatarX = 60;
-        const avatarY = (height - avatarSize) / 2;
         ctx.beginPath();
         ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
@@ -283,7 +375,6 @@ async function generateBannerWithBackground(pathImg, normalName, money, exp, lev
     // NOME
     ctx.fillStyle = '#00e5ff';
     ctx.font = 'bold 38px Arial';
-    ctx.textAlign = 'left';
     ctx.fillText(normalName, infoX, currentY);
     currentY += 55;
 
@@ -298,7 +389,6 @@ async function generateBannerWithBackground(pathImg, normalName, money, exp, lev
     // RANK
     ctx.fillStyle = rankColor;
     ctx.font = 'bold 22px Arial';
-    ctx.textAlign = 'left';
     ctx.fillText(rankText, infoX, currentY + 20);
     currentY += 55;
 
@@ -307,21 +397,18 @@ async function generateBannerWithBackground(pathImg, normalName, money, exp, lev
     const moneyColor = money >= 10000 ? '#FFD700' : '#00ff88';
     ctx.fillStyle = moneyColor;
     ctx.font = 'bold 48px Arial';
-    ctx.textAlign = 'left';
     ctx.fillText(formattedMoney, infoX, currentY);
     currentY += 60;
 
     // XP
     ctx.fillStyle = '#00d4ff';
     ctx.font = '18px Arial';
-    ctx.textAlign = 'left';
     ctx.fillText('⭐ ' + exp + ' XP', infoX, currentY);
     currentY += 35;
 
     // JOGADORES
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.font = '15px Arial';
-    ctx.textAlign = 'left';
     ctx.fillText('👥 ' + totalPlayers + ' jogadores', infoX, currentY);
 
     ctx.shadowBlur = 0;
@@ -350,9 +437,7 @@ async function generateBannerWithBackground(pathImg, normalName, money, exp, lev
     ctx.fillText('✦ Tsuki Bot ✦', width - 20, height - 12);
     ctx.shadowBlur = 0;
 
-    // SALVA
-    const imageBuffer = canvas.toBuffer('image/png');
-    fs.writeFileSync(pathImg, imageBuffer);
+    fs.writeFileSync(pathImg, canvas.toBuffer('image/png'));
 }
 
 function roundRect(ctx, x, y, w, h, r) {
