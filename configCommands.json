@@ -40,6 +40,7 @@
     }
   },
   "commandUnload": [
-    "horny.js"
+    "horny.js",
+    "pending.js"
   ]
 }
