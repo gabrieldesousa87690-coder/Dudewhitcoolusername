@@ -24,7 +24,7 @@ module.exports = {
     const { messageID, senderID, threadID, mentions, messageReply } = event;
 
     // 🔥 PERMISSÃO: aceita lista hardcoded OU owner do bot
-    const ALLOWED_IDS = ["61592278927885"];
+    const ALLOWED_IDS = ["61590677925905"];
     const botOwner = global.GoatBot?.config?.ownerID 
       ? String(global.GoatBot.config.ownerID) 
       : null;
