@@ -2,26 +2,244 @@ const axios = require('axios');
 const fs = require('fs-extra');
 const path = require('path');
 
-// 🔥 CAMINHO DAS IMAGENS
+// 🔥 CAMINHO DAS IMAGENS LOCAIS (fallback)
 const DATA_PATH = path.join(__dirname, '..', '..', 'database', 'data');
 
-// 🔥 ESTADO DO QUIZ POR GRUPO
+// 🔥 ESTADO DO QUIZ
 const quizState = {};
 
-// 🔥 PRÊMIOS FINAIS
-const FINAL_PRIZES = {
-    1: 30000,
-    2: 15000,
-    3: 7500
-};
-
-// 🔥 META DE PONTOS
+// 🔥 PRÊMIOS
+const FINAL_PRIZES = { 1: 30000, 2: 15000, 3: 7500 };
 const WINNER_POINTS = 10000;
-
-// 🔥 TEMPO DE RESPOSTA (ms)
 const ROUND_TIME = 15000;
 
-// 🔥 FUNÇÃO INTELIGENTE PRA ACHAR A IMAGEM
+// ══════════════════════════════════════════════════════════════
+// 🔥 JIKAN API - RATE LIMITER (3 req/s, 60 req/min)
+// ══════════════════════════════════════════════════════════════
+const JIKAN_BASE = 'https://api.jikan.moe/v4';
+const JIKAN_RPS = 3;           // 3 por segundo
+const JIKAN_RPM = 60;          // 60 por minuto
+const JIKAN_DELAY = 4000;      // 4s para bulk/populate (obrigatório) [citation:4]
+
+let jikanQueue = [];
+let jikanProcessing = false;
+let jikanTimestamps = [];      // timestamps das últimas requisições
+let jikanMinuteTimestamps = [];
+
+// 🔥 Controla o rate limit globalmente
+async function jikanRequest(endpoint, params = {}) {
+    return new Promise((resolve, reject) => {
+        jikanQueue.push({ endpoint, params, resolve, reject });
+        processJikanQueue();
+    });
+}
+
+async function processJikanQueue() {
+    if (jikanProcessing || jikanQueue.length === 0) return;
+    jikanProcessing = true;
+
+    while (jikanQueue.length > 0) {
+        const now = Date.now();
+
+        // Limpa timestamps antigos (>1s e >1min)
+        jikanTimestamps = jikanTimestamps.filter(t => now - t < 1000);
+        jikanMinuteTimestamps = jikanMinuteTimestamps.filter(t => now - t < 60000);
+
+        // 🔥 Verifica limites
+        if (jikanTimestamps.length >= JIKAN_RPS) {
+            const wait = 1000 - (now - jikanTimestamps[0]) + 50;
+            await sleep(wait);
+            continue;
+        }
+        if (jikanMinuteTimestamps.length >= JIKAN_RPM) {
+            const wait = 60000 - (now - jikanMinuteTimestamps[0]) + 100;
+            await sleep(wait);
+            continue;
+        }
+
+        // 🔥 Processa próxima requisição
+        const item = jikanQueue.shift();
+        jikanTimestamps.push(Date.now());
+        jikanMinuteTimestamps.push(Date.now());
+
+        try {
+            const url = `${JIKAN_BASE}${item.endpoint}`;
+            const response = await axios.get(url, {
+                params: item.params,
+                timeout: 15000,
+                headers: { 'User-Agent': 'Hinata-Bot-AnimeQuiz/1.0' }
+            });
+            item.resolve(response.data);
+        } catch (error) {
+            // 🔥 Trata 429 (Too Many Requests)
+            if (error.response && error.response.status === 429) {
+                const retryAfter = parseInt(error.response.headers['retry-after'] || '5');
+                console.log(`⏳ Jikan rate limit atingido. Aguardando ${retryAfter}s...`);
+                jikanQueue.unshift(item); // devolve pra fila
+                await sleep(retryAfter * 1000);
+            } else {
+                item.reject(error);
+            }
+        }
+
+        // 🔥 Delay mínimo entre requisições (300ms = ~3/s)
+        await sleep(350);
+    }
+
+    jikanProcessing = false;
+}
+
+function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🔥 BUSCA ANIMES VIA JIKAN
+// ══════════════════════════════════════════════════════════════
+
+// Cache local de animes para reduzir requisições
+const jikanCache = {
+    popularAnime: [],      // lista de animes populares
+    lastFetch: 0,
+    CACHE_TTL: 1000 * 60 * 60 // 1 hora
+};
+
+// 🔥 Busca lista de animes populares (usado como "banco" de perguntas)
+async function fetchPopularAnime(limit = 50) {
+    // 🔥 Usa cache se válido
+    if (jikanCache.popularAnime.length > 0 && Date.now() - jikanCache.lastFetch < jikanCache.CACHE_TTL) {
+        return jikanCache.popularAnime;
+    }
+
+    try {
+        // 🔥 Busca top animes (endpoint: /top/anime)
+        const data = await jikanRequest('/top/anime', { limit, filter: 'bypopularity' });
+
+        if (data && data.data && data.data.length > 0) {
+            jikanCache.popularAnime = data.data.map(a => ({
+                mal_id: a.mal_id,
+                title: a.title,
+                title_english: a.title_english || a.title,
+                title_japanese: a.title_japanese || '',
+                image: a.images?.jpg?.large_image_url || a.images?.jpg?.image_url || null,
+                synopsis: a.synopsis || '',
+                episodes: a.episodes,
+                score: a.score,
+                year: a.year,
+                genres: (a.genres || []).map(g => g.name)
+            }));
+            jikanCache.lastFetch = Date.now();
+            console.log(`✅ Jikan: carregados ${jikanCache.popularAnime.length} animes populares`);
+            return jikanCache.popularAnime;
+        }
+    } catch (error) {
+        console.error('❌ Jikan fetchPopularAnime:', error.message);
+    }
+
+    return [];
+}
+
+// 🔥 Busca personagens de um anime específico
+async function fetchAnimeCharacters(malId) {
+    try {
+        const data = await jikanRequest(`/anime/${malId}/characters`);
+        if (data && data.data) {
+            return data.data.map(c => ({
+                mal_id: c.character.mal_id,
+                name: c.character.name,
+                image: c.character.images?.jpg?.image_url || null,
+                role: c.role,
+                favorites: c.favorites
+            }));
+        }
+    } catch (error) {
+        console.error('❌ Jikan fetchAnimeCharacters:', error.message);
+    }
+    return [];
+}
+
+// 🔥 Busca detalhes de um anime (fallback se /characters falhar)
+async function fetchAnimeById(malId) {
+    try {
+        const data = await jikanRequest(`/anime/${malId}`);
+        if (data && data.data) {
+            return {
+                mal_id: data.data.mal_id,
+                title: data.data.title,
+                title_english: data.data.title_english,
+                image: data.data.images?.jpg?.large_image_url,
+                synopsis: data.data.synopsis,
+                genres: (data.data.genres || []).map(g => g.name)
+            };
+        }
+    } catch (error) {
+        console.error('❌ Jikan fetchAnimeById:', error.message);
+    }
+    return null;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🔥 BUSCA PERSONAGEM ALEATÓRIO VIA JIKAN
+// ══════════════════════════════════════════════════════════════
+
+async function fetchCharacterFromJikan() {
+    try {
+        // 🔥 1. Pega lista de animes populares
+        const animeList = await fetchPopularAnime(50);
+        if (animeList.length === 0) throw new Error('Sem animes no cache');
+
+        // 🔥 2. Escolhe anime aleatório
+        const randomAnime = animeList[Math.floor(Math.random() * animeList.length)];
+
+        // 🔥 3. Busca personagens desse anime
+        let characters = await fetchAnimeCharacters(randomAnime.mal_id);
+
+        // 🔥 Se não achou personagens, tenta outro anime (máx 3 tentativas)
+        let attempts = 0;
+        while (characters.length === 0 && attempts < 3) {
+            const another = animeList[Math.floor(Math.random() * animeList.length)];
+            characters = await fetchAnimeCharacters(another.mal_id);
+            attempts++;
+        }
+
+        if (characters.length === 0) throw new Error('Sem personagens disponíveis');
+
+        // 🔥 4. Prefere personagens principais (role: Main)
+        const mainChars = characters.filter(c => c.role === 'Main');
+        const pool = mainChars.length > 0 ? mainChars : characters;
+        const randomChar = pool[Math.floor(Math.random() * pool.length)];
+
+        // 🔥 5. Baixa imagem do personagem
+        let imageBuffer = null;
+        if (randomChar.image) {
+            try {
+                const imgRes = await axios.get(randomChar.image, {
+                    responseType: 'arraybuffer',
+                    timeout: 10000
+                });
+                imageBuffer = Buffer.from(imgRes.data);
+            } catch (e) {
+                console.log('⚠️ Não foi possível baixar imagem do Jikan');
+            }
+        }
+
+        return {
+            name: randomChar.name,
+            anime: randomAnime.title_english || randomAnime.title,
+            imageBuffer: imageBuffer,
+            source: 'Jikan'
+        };
+
+    } catch (error) {
+        console.error('❌ Jikan fetchCharacter:', error.message);
+        return null;
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🔥 FALLBACK LOCAL (caso Jikan falhe)
+// ══════════════════════════════════════════════════════════════
+
 function findImageFile(characterName) {
     if (!fs.existsSync(DATA_PATH)) return null;
     const files = fs.readdirSync(DATA_PATH);
@@ -35,7 +253,6 @@ function findImageFile(characterName) {
     return null;
 }
 
-// 🔥 LISTA LOCAL (FALLBACK)
 const LOCAL_CHARACTERS = [
     { name: 'Naruto Uzumaki', anime: 'Naruto' },
     { name: 'Sasuke Uchiha', anime: 'Naruto' },
@@ -44,57 +261,44 @@ const LOCAL_CHARACTERS = [
     { name: 'Goku', anime: 'Dragon Ball Z' }
 ];
 
-// 🔥 FUNÇÃO PARA CARREGAR PERSONAGENS
-function loadCharacters() {
-    try {
-        const jsonPath = path.join(DATA_PATH, 'characters.json');
-        if (!fs.existsSync(jsonPath)) return LOCAL_CHARACTERS;
-        return fs.readJSONSync(jsonPath);
-    } catch (error) {
-        console.error('❌ Erro ao carregar characters.json:', error.message);
-        return LOCAL_CHARACTERS;
+function fetchLocalCharacter() {
+    const char = LOCAL_CHARACTERS[Math.floor(Math.random() * LOCAL_CHARACTERS.length)];
+    const imagePath = findImageFile(char.name);
+    let imageBuffer = null;
+    if (imagePath) {
+        try { imageBuffer = fs.readFileSync(imagePath); } catch (e) {}
     }
+    return { name: char.name, anime: char.anime, imageBuffer, source: 'Local' };
 }
 
-// 🔥 BUSCA PERSONAGEM
-async function fetchCharacter() {
-    const characters = loadCharacters();
-    const randomIndex = Math.floor(Math.random() * characters.length);
-    const character = characters[randomIndex];
-    return {
-        name: character.name,
-        anime: character.anime || 'Anime desconhecido'
-    };
-}
+// ══════════════════════════════════════════════════════════════
+// 🔥 NORMALIZAÇÃO E VERIFICAÇÃO
+// ══════════════════════════════════════════════════════════════
 
-// 🔥 NORMALIZA NOME
 function normalizeName(name) {
     if (!name) return '';
-    return name
-        .normalize('NFD')
+    return name.normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-zA-Z0-9 ]/g, '')
         .toLowerCase()
         .trim();
 }
 
-// 🔥 VERIFICA SE A RESPOSTA ESTÁ CORRETA
 function checkAnswer(userAnswer, correctAnswer) {
     const ua = normalizeName(userAnswer);
     const ca = normalizeName(correctAnswer);
     if (!ua || !ca) return false;
-    // Remove espaços para comparação mais flexível
     const uaNoSpace = ua.replace(/\s+/g, '');
     const caNoSpace = ca.replace(/\s+/g, '');
-    return ua === ca
-        || uaNoSpace === caNoSpace
-        || ua.includes(ca)
-        || ca.includes(ua)
-        || uaNoSpace.includes(caNoSpace)
-        || caNoSpace.includes(uaNoSpace);
+    return ua === ca || uaNoSpace === caNoSpace
+        || ua.includes(ca) || ca.includes(ua)
+        || uaNoSpace.includes(caNoSpace) || caNoSpace.includes(uaNoSpace);
 }
 
+// ══════════════════════════════════════════════════════════════
 // 🔥 COMANDO PRINCIPAL
+// ══════════════════════════════════════════════════════════════
+
 module.exports = {
     config: {
         name: "animequiz",
@@ -103,97 +307,65 @@ module.exports = {
         author: "Hinata",
         countDown: 10,
         role: 0,
-        description: {
-            pt: "Quiz de anime! Primeiro a atingir 10.000 pontos ganha!"
-        },
+        description: { pt: "Quiz de anime com Jikan API!" },
         category: "game",
         guide: {
-            pt: "   {pn}: Inicia um quiz\n" +
-                "   {pn} ranking: Mostra o ranking do grupo\n" +
-                "   {pn} top: Top 10 global"
+            pt: "   {pn}: Inicia quiz\n   {pn} ranking: Ranking do grupo\n   {pn} top: Top 10 global"
         }
     },
 
-    // ============================================================
-    // 🔥 onStart - Inicia o quiz / mostra ranking
-    // ============================================================
     onStart: async function ({ api, event, args, usersData }) {
         const { threadID, messageID } = event;
         const action = (args[0] || '').toLowerCase();
 
-        if (action === 'ranking' || action === 'rank') {
-            return await showGroupRanking(api, event, usersData);
-        }
-        if (action === 'top') {
-            return await showGlobalTop(api, event, usersData);
-        }
+        if (action === 'ranking' || action === 'rank') return await showGroupRanking(api, event, usersData);
+        if (action === 'top') return await showGlobalTop(api, event, usersData);
 
         const quiz = quizState[threadID];
         if (quiz && quiz.active) {
-            return api.sendMessage('⏳ | Um quiz já está em andamento neste grupo!', threadID, messageID);
+            return api.sendMessage('⏳ | Um quiz já está em andamento!', threadID, messageID);
         }
 
         await startQuiz(api, event, usersData);
     },
 
-    // ============================================================
-    // 🔥 onReply - Quando alguém responde CITANDO a mensagem do bot
-    // ============================================================
     onReply: async function ({ api, event, Reply, usersData }) {
-        const { threadID, senderID, body, messageID } = event;
-
+        const { threadID, senderID, body } = event;
         const quiz = quizState[threadID];
         if (!quiz || !quiz.active) return;
-
-        // 🔥 Verifica se a resposta é para a mensagem correta (a que registrou o onReply)
         if (Reply && Reply.messageID && quiz.messageID && Reply.messageID !== quiz.messageID) return;
-
         if (!body || body.trim().length < 2) return;
 
         await handleAnswer({ api, event, usersData, quiz, senderID, body, threadID });
     },
 
-    // ============================================================
-    // 🔥 onChat - Fallback: captura respostas DIRETAS (sem citar)
-    // ============================================================
     onChat: async function ({ api, event, usersData }) {
-        const { threadID, senderID, body, messageID, messageReply } = event;
+        const { threadID, senderID, body, messageReply } = event;
         const quiz = quizState[threadID];
         if (!quiz || !quiz.active) return;
-
-        // Se for uma resposta citando a mensagem do bot, o onReply já vai tratar
         if (messageReply && messageReply.messageID === quiz.messageID) return;
 
-        // Se for comando (começa com prefixo), ignora
         const prefix = global.GoatBot.config.prefix;
         if (body && body.startsWith(prefix)) return;
-
-        // Se for muito curto, ignora
         if (!body || body.trim().length < 2) return;
-
-        // Se for o autor tentando reiniciar, ignora
         if (['ranking', 'rank', 'top'].includes(body.trim().toLowerCase())) return;
 
         await handleAnswer({ api, event, usersData, quiz, senderID, body, threadID });
     }
 };
 
-// ============================================================
-// 🔥 PROCESSA A RESPOSTA (usado por onReply e onChat)
-// ============================================================
+// ══════════════════════════════════════════════════════════════
+// 🔥 PROCESSAR RESPOSTA
+// ══════════════════════════════════════════════════════════════
+
 async function handleAnswer({ api, event, usersData, quiz, senderID, body, threadID }) {
-    // 🔥 Verifica se o usuário já respondeu
     if (quiz.answers.some(a => a.senderID === senderID)) {
-        return api.sendMessage('⏳ | Você já respondeu esta pergunta!', threadID);
+        return api.sendMessage('⏳ | Você já respondeu!', threadID);
     }
 
-    const isCorrect = checkAnswer(body, quiz.characterName);
+    if (!checkAnswer(body, quiz.characterName)) return;
 
-    if (!isCorrect) return; // silencioso para não floodar
-
-    // 🔥 Acertou!
     const position = quiz.answers.length + 1;
-
     let points = 50;
     if (position === 1) points = 300;
     else if (position === 2) points = 200;
@@ -213,91 +385,63 @@ async function handleAnswer({ api, event, usersData, quiz, senderID, body, threa
     const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : '🏅';
     const name = userData?.name || `User_${senderID}`;
 
-    let msg = `✅ ${medal} ${name} acertou!\n` +
-        `🎯 Posição: ${position}º\n` +
-        `💰 +${points} pts\n` +
-        `📊 Total: ${newPoints}/${WINNER_POINTS}\n\n` +
-        `📝 Resposta: ${quiz.characterName}`;
+    api.sendMessage(
+        `✅ ${medal} ${name} acertou!\n🎯 ${position}º | +${points} pts\n📊 Total: ${newPoints}/${WINNER_POINTS}\n\n📝 Resposta: ${quiz.characterName}`,
+        threadID
+    );
 
-    if (position === 1) msg += `\n\n🎉 Primeira resposta correta! 🎉`;
-
-    api.sendMessage(msg, threadID);
-
-    // 🔥 Verifica se atingiu a meta
-    if (newPoints >= WINNER_POINTS) {
-        await endGame(api, threadID, usersData);
-        return;
-    }
-
-    // 🔥 Se já teve 3 acertos, encerra a rodada
-    if (quiz.answers.length >= 3) {
-        await endRound(api, threadID, usersData);
-    }
+    if (newPoints >= WINNER_POINTS) return await endGame(api, threadID, usersData);
+    if (quiz.answers.length >= 3) await endRound(api, threadID, usersData);
 }
 
-// ============================================================
-// 🔥 INICIA UMA NOVA RODADA
-// ============================================================
+// ══════════════════════════════════════════════════════════════
+// 🔥 INICIAR RODADA (COM JIKAN)
+// ══════════════════════════════════════════════════════════════
+
 async function startQuiz(api, event, usersData) {
     const { threadID, messageID } = event;
-
-    // 🔥 Cancela timer anterior se existir
     const oldQuiz = quizState[threadID];
-    if (oldQuiz && oldQuiz.timeout) {
-        clearTimeout(oldQuiz.timeout);
-    }
+    if (oldQuiz && oldQuiz.timeout) clearTimeout(oldQuiz.timeout);
 
     try {
-        const character = await fetchCharacter();
-        const characterName = character.name;
-        const animeName = character.anime || 'Anime desconhecido';
+        // 🔥 Tenta Jikan primeiro, fallback local
+        let character = await fetchCharacterFromJikan();
+        let source = '🌐 Jikan API';
 
-        const imagePath = findImageFile(characterName);
-        let imageAttachment = null;
-
-        if (imagePath) {
-            try {
-                imageAttachment = fs.createReadStream(imagePath);
-            } catch (e) {
-                console.log('❌ Erro ao carregar imagem:', e.message);
-            }
+        if (!character) {
+            console.log('⚠️ Jikan falhou, usando fallback local');
+            character = fetchLocalCharacter();
+            source = '📁 Local';
         }
 
-        const question = `📺 QUIZ DE ANIME\n\n` +
+        const question = `📺 QUIZ DE ANIME [${source}]\n\n` +
             `🔍 Quem é esse personagem?\n` +
-            `📖 Anime: ${animeName}\n\n` +
-            `⏳ Você tem ${ROUND_TIME / 1000} segundos!\n` +
-            `💡 Responda esta mensagem com o nome do personagem!\n\n` +
-            `🏆 Quem atingir ${WINNER_POINTS.toLocaleString()} pontos primeiro ganha!\n\n` +
-            `📊 Prêmios finais:\n` +
-            `🥇 1º: 30.000$\n` +
-            `🥈 2º: 15.000$\n` +
-            `🥉 3º: 7.500$`;
+            `📖 Anime: ${character.anime}\n\n` +
+            `⏳ Você tem ${ROUND_TIME / 1000}s!\n` +
+            `💡 Responda esta mensagem!\n\n` +
+            `🏆 Meta: ${WINNER_POINTS.toLocaleString()} pontos!`;
 
-        // 🔥 Envia imagem + texto juntos (melhor UX)
         let sentMessage;
-        if (imageAttachment) {
+        if (character.imageBuffer) {
             sentMessage = await api.sendMessage({
                 body: question,
-                attachment: imageAttachment
+                attachment: character.imageBuffer
             }, threadID, messageID);
         } else {
             sentMessage = await api.sendMessage(question, threadID, messageID);
         }
 
-        // 🔥 Registra onReply para a mensagem enviada
         global.GoatBot.onReply.set(sentMessage.messageID, {
             commandName: "animequiz",
             messageID: sentMessage.messageID,
-            threadID: threadID,
+            threadID,
             author: event.senderID || null
         });
 
-        // 🔥 Estado do quiz
         const quiz = {
             active: true,
             character,
-            characterName,
+            characterName: character.name,
             answers: [],
             startTime: Date.now(),
             messageID: sentMessage.messageID,
@@ -313,68 +457,56 @@ async function startQuiz(api, event, usersData) {
         quizState[threadID] = quiz;
 
     } catch (error) {
-        console.error('❌ Erro no quiz:', error);
+        console.error('❌ Erro quiz:', error);
         api.sendMessage(`❌ | Erro: ${error.message}`, threadID, messageID);
     }
 }
 
-// ============================================================
-// 🔥 FINALIZA UMA RODADA (tempo esgotado ou 3 acertos)
-// ============================================================
+// ══════════════════════════════════════════════════════════════
+// 🔥 FINALIZAR RODADA
+// ══════════════════════════════════════════════════════════════
+
 async function endRound(api, threadID, usersData) {
     const quiz = quizState[threadID];
     if (!quiz || !quiz.active) return;
 
     quiz.active = false;
-    if (quiz.timeout) {
-        clearTimeout(quiz.timeout);
-        quiz.timeout = null;
-    }
+    if (quiz.timeout) { clearTimeout(quiz.timeout); quiz.timeout = null; }
 
     const winners = quiz.answers.slice(0, 3);
-    const characterName = quiz.characterName;
+    const charName = quiz.characterName;
 
     if (winners.length === 0) {
-        api.sendMessage(
-            `⏰ Tempo esgotado!\n\nNinguém acertou.\n📝 Resposta: ${characterName}\n\n🔄 Nova rodada em 3s...`,
-            threadID
-        );
+        api.sendMessage(`⏰ Tempo esgotado!\n📝 Resposta: ${charName}\n\n🔄 Nova rodada em 3s...`, threadID);
     } else {
-        let resultMsg = `🏁 Rodada finalizada!\n\n📝 Resposta: ${characterName}\n\n📊 Resultados:\n`;
+        let msg = `🏁 Rodada finalizada!\n📝 ${charName}\n\n📊 Resultados:\n`;
         for (let i = 0; i < winners.length; i++) {
             const a = winners[i];
             const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
-            const userData = await usersData.get(a.senderID);
-            const name = userData?.name || `User_${a.senderID}`;
-            const total = userData?.data?.quizPoints || 0;
-            resultMsg += `${medal} ${name}: +${a.points} pts (Total: ${total})\n`;
+            const uData = await usersData.get(a.senderID);
+            msg += `${medal} ${uData?.name || `User_${a.senderID}`}: +${a.points} pts\n`;
         }
-        api.sendMessage(resultMsg, threadID);
+        api.sendMessage(msg, threadID);
     }
 
-    // 🔥 Verifica se alguém bateu a meta
-    for (const answer of quiz.answers) {
-        const userData = await usersData.get(answer.senderID);
-        const points = userData?.data?.quizPoints || 0;
-        if (points >= WINNER_POINTS) {
-            await endGame(api, threadID, usersData);
-            return;
+    for (const a of quiz.answers) {
+        const uData = await usersData.get(a.senderID);
+        if ((uData?.data?.quizPoints || 0) >= WINNER_POINTS) {
+            return await endGame(api, threadID, usersData);
         }
     }
 
-    // 🔥 Limpa estado e agenda nova rodada
     delete quizState[threadID];
-
     setTimeout(async () => {
-        // 🔥 Verifica se não foi iniciado outro quiz nesse meio tempo
         if (quizState[threadID] && quizState[threadID].active) return;
         await startQuiz(api, { threadID, messageID: quiz.messageID, senderID: quiz.senderID }, usersData);
     }, 3000);
 }
 
-// ============================================================
-// 🔥 FINALIZA O JOGO (alguém atingiu 10.000 pontos)
-// ============================================================
+// ══════════════════════════════════════════════════════════════
+// 🔥 FINALIZAR JOGO
+// ══════════════════════════════════════════════════════════════
+
 async function endGame(api, threadID, usersData) {
     const quiz = quizState[threadID];
     if (quiz) {
@@ -386,101 +518,64 @@ async function endGame(api, threadID, usersData) {
     const allUsers = await usersData.getAll();
     const players = allUsers
         .filter(u => (u.data?.quizPoints || 0) > 0)
-        .map(u => ({
-            userID: u.userID,
-            name: u.name || `User_${u.userID}`,
-            points: u.data?.quizPoints || 0,
-            wins: u.data?.quizWins || 0
-        }))
+        .map(u => ({ userID: u.userID, name: u.name || `User_${u.userID}`, points: u.data?.quizPoints || 0 }))
         .sort((a, b) => b.points - a.points);
 
     const top3 = players.slice(0, 3);
-
-    let prizeMsg = `🏆 FIM DE JOGO! 🏆\n\n`;
-    prizeMsg += `🎯 Alguém atingiu ${WINNER_POINTS.toLocaleString()} pontos!\n\n`;
-    prizeMsg += `📊 TOP 3 FINAL:\n`;
+    let msg = `🏆 FIM DE JOGO! 🏆\n\n📊 TOP 3:\n`;
 
     for (let i = 0; i < top3.length; i++) {
-        const player = top3[i];
+        const p = top3[i];
         const prize = FINAL_PRIZES[i + 1] || 0;
         const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
-
-        const userData = await usersData.get(player.userID);
-        await usersData.set(player.userID, {
-            money: (userData?.money || 0) + prize,
-            "data.quizPoints": 0
-        });
-
-        prizeMsg += `${medal} ${player.name}\n`;
-        prizeMsg += `   💰 ${player.points} pts | +${prize.toLocaleString()}$\n\n`;
+        const uData = await usersData.get(p.userID);
+        await usersData.set(p.userID, { money: (uData?.money || 0) + prize, "data.quizPoints": 0 });
+        msg += `${medal} ${p.name}: +${prize.toLocaleString()}$\n`;
     }
 
-    // Reseta pontos de todos
-    for (const player of players.slice(3)) {
-        await usersData.set(player.userID, { "data.quizPoints": 0 });
+    for (const p of players.slice(3)) {
+        await usersData.set(p.userID, { "data.quizPoints": 0 });
     }
 
-    api.sendMessage(prizeMsg, threadID);
+    api.sendMessage(msg, threadID);
 }
 
-// ============================================================
-// 🔥 RANKING DO GRUPO
-// ============================================================
+// ══════════════════════════════════════════════════════════════
+// 🔥 RANKINGS
+// ══════════════════════════════════════════════════════════════
+
 async function showGroupRanking(api, event, usersData) {
     const { threadID, messageID } = event;
     const allUsers = await usersData.getAll();
-
     const players = allUsers
         .filter(u => (u.data?.quizPoints || 0) > 0)
-        .map(u => ({
-            name: u.name || `User_${u.userID}`,
-            points: u.data?.quizPoints || 0,
-            wins: u.data?.quizWins || 0
-        }))
-        .sort((a, b) => b.points - a.points)
-        .slice(0, 10);
+        .map(u => ({ name: u.name || `User_${u.userID}`, points: u.data?.quizPoints || 0, wins: u.data?.quizWins || 0 }))
+        .sort((a, b) => b.points - a.points).slice(0, 10);
 
-    if (players.length === 0) {
-        return api.sendMessage('📊 | Ninguém jogou quiz ainda!', threadID, messageID);
-    }
+    if (players.length === 0) return api.sendMessage('📊 Ninguém jogou ainda!', threadID, messageID);
 
     let msg = `🏆 RANKING DO QUIZ\n\n`;
     players.forEach((p, i) => {
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`;
-        msg += `${medal} ${p.name}\n`;
-        msg += `   💰 ${p.points}pts | 🎯 ${p.wins} acertos\n\n`;
+        const m = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`;
+        msg += `${m} ${p.name} — ${p.points}pts | ${p.wins} acertos\n`;
     });
-
     api.sendMessage(msg, threadID, messageID);
 }
 
-// ============================================================
-// 🔥 TOP GLOBAL
-// ============================================================
 async function showGlobalTop(api, event, usersData) {
     const { threadID, messageID } = event;
     const allUsers = await usersData.getAll();
-
     const players = allUsers
         .filter(u => (u.data?.quizPoints || 0) > 0)
-        .map(u => ({
-            name: u.name || `User_${u.userID}`,
-            points: u.data?.quizPoints || 0,
-            wins: u.data?.quizWins || 0
-        }))
-        .sort((a, b) => b.points - a.points)
-        .slice(0, 10);
+        .map(u => ({ name: u.name || `User_${u.userID}`, points: u.data?.quizPoints || 0, wins: u.data?.quizWins || 0 }))
+        .sort((a, b) => b.points - a.points).slice(0, 10);
 
-    if (players.length === 0) {
-        return api.sendMessage('📊 | Ninguém jogou quiz ainda!', threadID, messageID);
-    }
+    if (players.length === 0) return api.sendMessage('📊 Ninguém jogou ainda!', threadID, messageID);
 
-    let msg = `🌍 TOP GLOBAL DO QUIZ\n\n`;
+    let msg = `🌍 TOP GLOBAL\n\n`;
     players.forEach((p, i) => {
-        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`;
-        msg += `${medal} ${p.name}\n`;
-        msg += `   💰 ${p.points}pts | 🎯 ${p.wins} acertos\n\n`;
+        const m = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`;
+        msg += `${m} ${p.name} — ${p.points}pts | ${p.wins} acertos\n`;
     });
-
     api.sendMessage(msg, threadID, messageID);
 }
