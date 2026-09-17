@@ -41,6 +41,7 @@
   },
   "commandUnload": [
     "horny.js",
-    "pending.js"
+    "pending.js",
+    "pinterest.js"
   ]
 }
